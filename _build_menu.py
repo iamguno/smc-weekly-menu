@@ -437,6 +437,15 @@ def render_html(payload: dict) -> str:
     .dates button.is-today:not([aria-selected="true"]) {{
       border-color: var(--accent); color: var(--accent);
     }}
+    .views {{
+      margin-top: 12px; font-size: 12px; color: var(--muted);
+      display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: baseline;
+    }}
+    .views strong {{ color: var(--ink); font-weight: 700; }}
+    .views .v-day {{ font-variant-numeric: tabular-nums; }}
+    .dates button .v-count {{
+      display: block; font-size: 11px; opacity: 0.75; margin-top: 2px; font-weight: 500;
+    }}
     .loc-nav {{ display: flex; gap: 8px; flex-wrap: wrap; margin: 16px 0 8px; }}
     .loc-nav a {{
       color: var(--muted); text-decoration: none; font-size: 13px;
@@ -475,7 +484,7 @@ def render_html(payload: dict) -> str:
     footer {{ color: var(--muted); font-size: 12px; margin-top: 28px; }}
     @media print {{
       header {{ position: static; background: #fff; }}
-      .dates, .loc-nav {{ display: none; }}
+      .dates, .loc-nav, .views {{ display: none; }}
       section.place {{ break-inside: avoid; }}
     }}
   </style>
@@ -486,6 +495,7 @@ def render_html(payload: dict) -> str:
       <h1>삼성서울병원 주간 식단</h1>
       <div class="sub" id="weekline"></div>
       <div class="dates" id="dates" role="tablist" aria-label="날짜 선택"></div>
+      <div class="views" id="views" hidden>조회수를 불러오는 중</div>
       <nav class="loc-nav" id="locnav"></nav>
     </div>
   </header>
@@ -506,6 +516,10 @@ def render_html(payload: dict) -> str:
     weekline.textContent = DATA.week + " · " + DATA.range;
 
     const datesEl = document.getElementById("dates");
+    const viewsEl = document.getElementById("views");
+    const viewsByDay = {{}};
+    const COUNT_NS = "iamguno.github.io";
+    const COUNT_BASE = "https://abacus.jsn.cam";
     let selected = DATA.days.some(d => d.date === todayIso) ? todayIso : DATA.days[0].date;
 
     function dayOf(iso) {{
@@ -522,6 +536,12 @@ def render_html(payload: dict) -> str:
         if (d.date === todayIso) {{
           b.classList.add("is-today");
           if (d.date === selected) b.textContent = d.label + " · 오늘";
+        }}
+        if (viewsByDay[d.date] != null) {{
+          const c = document.createElement("span");
+          c.className = "v-count";
+          c.textContent = viewsByDay[d.date] + "회";
+          b.appendChild(c);
         }}
         b.addEventListener("click", () => {{
           selected = d.date;
@@ -627,7 +647,50 @@ def render_html(payload: dict) -> str:
       main.appendChild(foot);
     }}
 
+    async function countGet(key) {{
+      const res = await fetch(COUNT_BASE + "/get/" + COUNT_NS + "/" + encodeURIComponent(key));
+      if (res.status === 404) return 0;
+      if (!res.ok) throw new Error("count get");
+      const data = await res.json();
+      return Number(data.value) || 0;
+    }}
+
+    async function countHit(key) {{
+      const res = await fetch(COUNT_BASE + "/hit/" + COUNT_NS + "/" + encodeURIComponent(key));
+      if (!res.ok) throw new Error("count hit");
+      const data = await res.json();
+      return Number(data.value) || 0;
+    }}
+
+    async function loadViews() {{
+      const onSite = location.hostname === "iamguno.github.io";
+      try {{
+        for (const d of DATA.days) {{
+          viewsByDay[d.date] = d.date === todayIso && onSite
+            ? await countHit("menu-" + d.date)
+            : await countGet("menu-" + d.date);
+        }}
+        const todayCount = viewsByDay[todayIso] || 0;
+        const weekCount = DATA.days.reduce((s, day) => s + (viewsByDay[day.date] || 0), 0);
+        viewsEl.hidden = false;
+        viewsEl.innerHTML = "";
+        const summary = document.createElement("div");
+        summary.innerHTML = "조회수 · 오늘 <strong>" + todayCount + "</strong>회 · 이번 주 <strong>" + weekCount + "</strong>회";
+        viewsEl.appendChild(summary);
+        DATA.days.forEach(d => {{
+          const span = document.createElement("span");
+          span.className = "v-day";
+          span.textContent = d.md + " " + (viewsByDay[d.date] || 0) + "회";
+          viewsEl.appendChild(span);
+        }});
+        renderDateButtons();
+      }} catch (err) {{
+        viewsEl.hidden = true;
+      }}
+    }}
+
     render();
+    loadViews();
   </script>
 </body>
 </html>
