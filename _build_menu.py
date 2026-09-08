@@ -334,7 +334,6 @@ def main():
     payload = {
         "week": "2026년 9월 2주",
         "range": "9/7 (월) – 9/13 (일)",
-        "updated": "엑셀·밀카페 주간 메뉴 기준",
         "hours": HOURS,
         "days": days,
         "cafeNote": "본관 밀카페는 평일(9/7–9/11)만 운영합니다.",
@@ -460,7 +459,7 @@ def render_html(payload: dict) -> str:
     ].join("-");
 
     const weekline = document.getElementById("weekline");
-    weekline.textContent = DATA.week + " · " + DATA.range + " · " + DATA.updated;
+    weekline.textContent = DATA.week + " · " + DATA.range;
 
     const datesEl = document.getElementById("dates");
     let selected = DATA.days.some(d => d.date === todayIso) ? todayIso : DATA.days[0].date;
