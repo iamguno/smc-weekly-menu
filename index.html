@@ -50,9 +50,6 @@
     }
     .views strong { color: var(--ink); font-weight: 700; }
     .views .v-day { font-variant-numeric: tabular-nums; }
-    .dates button .v-count {
-      display: block; font-size: 11px; opacity: 0.75; margin-top: 2px; font-weight: 500;
-    }
     .loc-nav { display: flex; gap: 8px; flex-wrap: wrap; margin: 16px 0 8px; }
     .loc-nav a {
       color: var(--muted); text-decoration: none; font-size: 13px;
@@ -143,12 +140,6 @@
         if (d.date === todayIso) {
           b.classList.add("is-today");
           if (d.date === selected) b.textContent = d.label + " · 오늘";
-        }
-        if (viewsByDay[d.date] != null) {
-          const c = document.createElement("span");
-          c.className = "v-count";
-          c.textContent = viewsByDay[d.date] + "회";
-          b.appendChild(c);
         }
         b.addEventListener("click", () => {
           selected = d.date;
@@ -290,7 +281,6 @@
           span.textContent = d.md + " " + (viewsByDay[d.date] || 0) + "회";
           viewsEl.appendChild(span);
         });
-        renderDateButtons();
       } catch (err) {
         viewsEl.hidden = true;
       }
