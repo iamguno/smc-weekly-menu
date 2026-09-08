@@ -493,7 +493,7 @@ def render_html(payload: dict) -> str:
   <script id="meal-data" type="application/json">{data_json}</script>
   <script>
     const DATA = JSON.parse(document.getElementById("meal-data").textContent);
-    const LOC_ORDER = ["본관 직원식당", "본관 밀카페", "암병원 직원식당", "암병원 밀카페", "일원역캠퍼스 식당"];
+    const LOC_ORDER = ["본관 직원식당", "본관 밀카페", "암병원 밀카페", "암병원 직원식당", "일원역캠퍼스 식당"];
     const MEAL_ORDER = ["아침", "점심", "저녁", "야간", "카페"];
     const today = new Date();
     const todayIso = [
