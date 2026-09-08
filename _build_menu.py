@@ -272,6 +272,40 @@ CAFE_BONGWAN = {
     },
 }
 
+# 암병원 밀카페 — 주간 메뉴 이미지(9/7–9/11)에서 정리
+CAFE_AM = {
+    "2026-09-07": {
+        "빵": ["먹물치아바타", "고구마빵", "플레인카스테라"],
+        "샐러드": ["보코치니샐러드", "푸실리샐러드", "수제요거트"],
+        "랩·샌드위치": ["어니언치킨랩", "폴드포크샌드위치"],
+        "컵밥": ["베이컨김치볶음밥"],
+    },
+    "2026-09-08": {
+        "빵": ["올리브 포카치아", "치즈케이크", "크림치즈프레즐"],
+        "샐러드": ["닭가슴살샐러드", "구운감자샐러드", "수제요거트"],
+        "랩·샌드위치": ["랜치소시지랩", "블랙번샌드위치"],
+        "컵밥": ["참치생야채컵밥"],
+    },
+    "2026-09-09": {
+        "빵": ["통밀베이글 + 크림치즈", "플레인스콘", "소보로빵"],
+        "샐러드": ["견과샐러드", "푸실리샐러드", "수제요거트"],
+        "랩·샌드위치": ["멕시칸치킨랩", "불고기치즈버거"],
+        "컵밥": ["닭갈비컵밥"],
+    },
+    "2026-09-10": {
+        "빵": ["무화과로프", "크림치즈프레즐", "플레인카스테라"],
+        "샐러드": ["구운버섯샐러드", "구운감자샐러드", "수제요거트"],
+        "랩·샌드위치": ["케이준치킨시저랩", "대만식햄치즈샌드위치"],
+        "컵밥": ["버터장조림컵밥"],
+    },
+    "2026-09-11": {
+        "빵": ["브라운브레드", "치즈방앗간", "크로와상"],
+        "샐러드": ["닭가슴살샐러드", "보코치니샐러드", "수제요거트"],
+        "랩·샌드위치": ["비프치폴레랩", "햄치즈크라상샌드위치"],
+        "컵밥": ["제육불고기컵밥"],
+    },
+}
+
 HOURS = {
     "본관 직원식당": {
         "아침": "06:30–08:00",
@@ -296,6 +330,13 @@ HOURS = {
         "랩·샌드위치": "1차 07:30 · 2차 11:00",
         "컵밥": "11:00~",
     },
+    "암병원 밀카페": {
+        "운영": "07:30–15:30 (평일)",
+        "빵": "08:00~",
+        "샐러드": "08:00~ · 선택 가능 · 품절·수급 시 변경",
+        "랩·샌드위치": "07:30~ · 샌드위치 07:30–08:00, 12:00~ 소진 시까지",
+        "컵밥": "11:00~",
+    },
 }
 
 
@@ -304,7 +345,7 @@ def cafe_to_meals(day_map: dict) -> dict:
 
 
 def build_days(bongwan, am, ilwon):
-    dates = sorted(set(bongwan) | set(am) | set(ilwon) | set(CAFE_BONGWAN))
+    dates = sorted(set(bongwan) | set(am) | set(ilwon) | set(CAFE_BONGWAN) | set(CAFE_AM))
     days = []
     for iso in dates:
         dt = datetime.strptime(iso, "%Y-%m-%d")
@@ -319,6 +360,7 @@ def build_days(bongwan, am, ilwon):
                     "본관 직원식당": bongwan.get(iso, {}),
                     "본관 밀카페": cafe_to_meals(CAFE_BONGWAN).get(iso, {}),
                     "암병원 직원식당": am.get(iso, {}),
+                    "암병원 밀카페": cafe_to_meals(CAFE_AM).get(iso, {}),
                     "일원역캠퍼스 식당": ilwon.get(iso, {}),
                 },
             }
@@ -336,7 +378,7 @@ def main():
         "range": "9/7 (월) – 9/13 (일)",
         "hours": HOURS,
         "days": days,
-        "cafeNote": "본관 밀카페는 평일(9/7–9/11)만 운영합니다.",
+        "cafeNote": "본관·암병원 밀카페는 평일(9/7–9/11)만 운영합니다.",
     }
     html = render_html(payload)
     out = ROOT / "index.html"
@@ -354,6 +396,8 @@ def render_html(payload: dict) -> str:
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
   <title>SMC 주간 식단</title>
   <style>
     :root {{
@@ -449,7 +493,7 @@ def render_html(payload: dict) -> str:
   <script id="meal-data" type="application/json">{data_json}</script>
   <script>
     const DATA = JSON.parse(document.getElementById("meal-data").textContent);
-    const LOC_ORDER = ["본관 직원식당", "본관 밀카페", "암병원 직원식당", "일원역캠퍼스 식당"];
+    const LOC_ORDER = ["본관 직원식당", "본관 밀카페", "암병원 직원식당", "암병원 밀카페", "일원역캠퍼스 식당"];
     const MEAL_ORDER = ["아침", "점심", "저녁", "야간", "카페"];
     const today = new Date();
     const todayIso = [
@@ -511,7 +555,8 @@ def render_html(payload: dict) -> str:
         c.className = "course";
         if (!(names.length === 1 && (name === "메뉴" || name === "카페"))) {{
           const h4 = document.createElement("h4");
-          h4.textContent = name;
+          const extra = (DATA.hours[loc] && DATA.hours[loc][name]) ? " · " + DATA.hours[loc][name] : "";
+          h4.textContent = name + extra;
           c.appendChild(h4);
         }}
         const ul = document.createElement("ul");
