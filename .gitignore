@@ -3,7 +3,6 @@
 *.jpg
 *.jpeg
 *.png
-!assets/characters/*.png
 character/
 _scratch/
 __pycache__/
