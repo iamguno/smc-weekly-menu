@@ -776,7 +776,8 @@
             : await countGet("menu-" + d.date);
         }
         const todayCount = viewsByDay[todayIso] || 0;
-        const weekCount = DATA.days.reduce((s, day) => s + (viewsByDay[day.date] || 0), 0);
+        const weekDays = DATA.days.filter((d, i) => !(i === 0 && new Date(d.date + "T00:00:00").getDay() === 0));
+        const weekCount = weekDays.reduce((s, day) => s + (viewsByDay[day.date] || 0), 0);
         viewsEl.hidden = false;
         viewsEl.innerHTML = "조회수 · 오늘 <strong>" + todayCount + "</strong>회 · 이번 주 <strong>" + weekCount + "</strong>회";
       } catch (err) {
