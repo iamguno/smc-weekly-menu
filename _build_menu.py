@@ -466,134 +466,206 @@ def render_html(payload: dict) -> str:
     data_json = json.dumps(payload, ensure_ascii=False)
     # prevent </script> breakout
     data_json = data_json.replace("<", "\\u003c")
-    return f"""<!DOCTYPE html>
+    return HTML_TEMPLATE.replace("__MEAL_DATA__", data_json)
+
+
+HTML_TEMPLATE = r"""<!DOCTYPE html>
 <html lang="ko">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
+  <meta name="theme-color" content="#f4f1ea" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="SMC 식단" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
   <title>SMC 주간 식단</title>
+  <script>
+    (function () {
+      var pref = null;
+      try { pref = localStorage.getItem("theme"); } catch (e) {}
+      var dark = pref ? pref === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
+      document.documentElement.dataset.theme = dark ? "dark" : "light";
+    })();
+  </script>
   <style>
-    :root {{
+    :root {
       --bg: #f4f1ea;
       --paper: #fffdf8;
+      --card: #ffffff;
       --ink: #1c1916;
       --muted: #6b645b;
       --line: #e4ddd2;
       --accent: #b45309;
-      --accent-soft: #f3e4d0;
       --green: #3f6b4a;
       --blue: #2f4f73;
-      --night: #4b3f6b;
-    }}
-    * {{ box-sizing: border-box; }}
-    html, body {{ margin: 0; padding: 0; background: var(--bg); color: var(--ink);
+      --header: rgba(244, 241, 234, 0.93);
+      --on-ink: #ffffff;
+      --open: #1f6b3a;
+      --open-bg: #dcefe1;
+      --next: #9a4a07;
+      --next-bg: #f6e6d2;
+      color-scheme: light;
+    }
+    :root[data-theme="dark"] {
+      --bg: #151311;
+      --paper: #1d1a17;
+      --card: #24211e;
+      --ink: #ece6dc;
+      --muted: #a39a8e;
+      --line: #38332d;
+      --accent: #f0a35c;
+      --green: #93cba1;
+      --blue: #9dbbe0;
+      --header: rgba(21, 19, 17, 0.93);
+      --on-ink: #151311;
+      --open: #9ee0b1;
+      --open-bg: #1f3a29;
+      --next: #f3b57a;
+      --next-bg: #3b2a19;
+      color-scheme: dark;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink);
       font-family: "Apple SD Gothic Neo", "Pretendard", "Noto Sans KR", sans-serif;
-      line-height: 1.45; }}
-    header {{
+      line-height: 1.45; }
+    header {
       position: sticky; top: 0; z-index: 20;
-      background: #f4f1eaee; backdrop-filter: blur(10px);
+      background: var(--header); backdrop-filter: blur(10px);
       border-bottom: 1px solid var(--line);
-    }}
-    .wrap {{ max-width: 1180px; margin: 0 auto; padding: 18px 20px 40px; }}
-    header .wrap {{ padding-bottom: 14px; }}
-    h1 {{ margin: 0 0 4px; font-size: 22px; letter-spacing: -0.03em; }}
-    .sub {{ color: var(--muted); font-size: 13px; }}
-    .dates {{ display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }}
-    .dates button {{
+    }
+    .wrap { max-width: 1180px; margin: 0 auto; padding: 18px 20px 40px; }
+    header .wrap { padding-bottom: 14px; }
+    .title-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    h1 { margin: 0 0 4px; font-size: 22px; letter-spacing: -0.03em; }
+    .head-actions { display: flex; gap: 6px; flex-shrink: 0; }
+    .pill-btn {
+      appearance: none; border: 1px solid var(--line); background: var(--paper);
+      border-radius: 999px; padding: 6px 12px; cursor: pointer; color: var(--muted);
+      font: inherit; font-size: 12px; white-space: nowrap;
+    }
+    .pill-btn:hover { color: var(--ink); border-color: var(--ink); }
+    .pill-btn[hidden] { display: none; }
+    .sub { color: var(--muted); font-size: 13px; }
+    .dates { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+    .dates button {
       appearance: none; border: 1px solid var(--line); background: var(--paper);
       border-radius: 999px; padding: 8px 14px; cursor: pointer; color: var(--ink);
       font: inherit; font-size: 14px;
-    }}
-    .dates button[aria-selected="true"] {{
-      background: var(--ink); color: #fff; border-color: var(--ink);
-    }}
-    .dates button.is-today:not([aria-selected="true"]) {{
+    }
+    .dates button[aria-selected="true"] {
+      background: var(--ink); color: var(--on-ink); border-color: var(--ink);
+    }
+    .dates button.is-today:not([aria-selected="true"]) {
       border-color: var(--accent); color: var(--accent);
-    }}
-    .views {{
+    }
+    .views {
       margin-top: 12px; font-size: 12px; color: var(--muted);
       display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: baseline;
-    }}
-    .views strong {{ color: var(--ink); font-weight: 700; }}
-    .views .v-day {{ font-variant-numeric: tabular-nums; }}
-    .loc-nav {{ display: flex; gap: 8px; flex-wrap: wrap; margin: 16px 0 8px; }}
-    .loc-nav a {{
+    }
+    .views strong { color: var(--ink); font-weight: 700; }
+    .views .v-day { font-variant-numeric: tabular-nums; }
+    .loc-nav { display: flex; gap: 8px; flex-wrap: wrap; margin: 16px 0 8px; }
+    .loc-nav a {
       color: var(--muted); text-decoration: none; font-size: 13px;
       border-bottom: 1px solid transparent;
-    }}
-    .loc-nav a:hover {{ color: var(--ink); border-color: var(--ink); }}
-    section.place {{
+    }
+    .loc-nav a:hover { color: var(--ink); border-color: var(--ink); }
+    .loc-nav a.is-live { color: var(--open); font-weight: 700; }
+    section.place {
       background: var(--paper); border: 1px solid var(--line);
       border-radius: 16px; padding: 20px 20px 16px; margin: 16px 0 0;
-    }}
-    section.place h2 {{
-      margin: 0 0 4px; font-size: 18px; letter-spacing: -0.02em;
-    }}
-    .hours-line {{ color: var(--muted); font-size: 12px; margin-bottom: 14px; }}
-    .meals {{
+    }
+    .slot-head { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+    section.place h2 { margin: 0; font-size: 18px; letter-spacing: -0.02em; }
+    .share-btn { margin-left: auto; padding: 4px 10px; }
+    .live {
+      display: inline-block; font-size: 11px; font-weight: 700; line-height: 1;
+      padding: 4px 8px; border-radius: 999px; white-space: nowrap;
+    }
+    .live-open { background: var(--open-bg); color: var(--open); }
+    .live-next { background: var(--next-bg); color: var(--next); }
+    .when .live { margin-left: 6px; padding: 2px 6px; font-size: 10px; }
+    .hours-line { color: var(--muted); font-size: 12px; margin-bottom: 14px; }
+    .slot-head + .meals, .slot-head + .cafe-grid, .slot-head + .empty { margin-top: 10px; }
+    .meals {
       display: grid; gap: 10px;
       grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    }}
-    .cafe-grid {{
-      display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px;
-    }}
-    .cafe-head {{
+    }
+    .meal {
+      border: 1px solid var(--line); border-radius: 12px; padding: 12px 12px 8px;
+      background: var(--card);
+    }
+    .meal h3 { margin: 0 0 2px; font-size: 13px; color: var(--accent); }
+    .meal .when { font-size: 11px; color: var(--muted); margin-bottom: 8px; }
+    .course { margin-bottom: 10px; }
+    .course h4 { margin: 0 0 4px; font-size: 12px; color: var(--blue); font-weight: 700; }
+    .course ul, .cafe-cell ul { margin: 0; padding: 0 0 0 16px; }
+    .course li, .cafe-cell li { font-size: 13.5px; margin: 2px 0; }
+    li.theme { list-style: none; margin-left: -16px; font-weight: 700; color: var(--green); }
+    .tag {
+      display: inline-block; font-size: 10px; font-weight: 700; line-height: 15px;
+      padding: 0 5px; border-radius: 5px; margin-right: 4px; vertical-align: 1px; color: #fff;
+    }
+    .tag-new { background: #e11d48; }
+    .tag-hot { background: #ea580c; }
+    .tag-encore { background: #7c3aed; }
+    .tag-season { background: #16a34a; }
+    .tag-collab { background: #2563eb; }
+    .cafe-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; }
+    .cafe-head {
       margin: 0; font-size: 13px; color: var(--accent);
       border-bottom: 1px solid var(--line); padding-bottom: 6px;
-    }}
-    .cafe-cat {{
-      grid-column: 1 / -1; margin: 8px 0 0; font-size: 12px; color: var(--blue); font-weight: 700;
-    }}
-    .cafe-cell {{
-      border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; background: #fff;
-    }}
-    .cafe-cell ul {{ margin: 0; padding: 0 0 0 16px; }}
-    .cafe-cell li {{ font-size: 13.5px; margin: 2px 0; }}
-    .cafe-cell .when {{ font-size: 11px; color: var(--muted); margin-bottom: 4px; }}
-    .cafe-cell .empty {{ padding: 0; }}
-    @media (max-width: 600px) {{
-      .dates {{
+    }
+    .cafe-cat { grid-column: 1 / -1; margin: 8px 0 0; font-size: 12px; color: var(--blue); font-weight: 700; }
+    .cafe-cell { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; background: var(--card); }
+    .cafe-cell .when { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+    .cafe-cell .empty { padding: 0; }
+    .empty { color: var(--muted); font-size: 13px; padding: 8px 0; }
+    footer { color: var(--muted); font-size: 12px; margin-top: 28px; }
+    .toast {
+      position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom));
+      transform: translate(-50%, 20px); opacity: 0; pointer-events: none;
+      background: var(--ink); color: var(--on-ink); font-size: 13px;
+      padding: 10px 16px; border-radius: 999px; max-width: calc(100% - 32px);
+      transition: opacity 0.2s, transform 0.2s; z-index: 30; text-align: center;
+    }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+    @media (max-width: 600px) {
+      h1 { font-size: 20px; }
+      .dates {
         flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none;
         margin-left: -20px; margin-right: -20px; padding: 0 20px;
-      }}
-      .dates::-webkit-scrollbar {{ display: none; }}
-      .dates button {{ flex: 0 0 auto; }}
-      section.place {{ padding: 14px 12px 12px; }}
-      .meal {{ padding: 10px 10px 6px; }}
-      .course li, .cafe-cell li {{ font-size: 13px; }}
-      .course ul, .cafe-cell ul {{ padding-left: 14px; }}
-    }}
-    .meal {{
-      border: 1px solid var(--line); border-radius: 12px; padding: 12px 12px 8px;
-      background: #fff;
-    }}
-    .meal h3 {{
-      margin: 0 0 2px; font-size: 13px;
-      text-transform: none; color: var(--accent);
-    }}
-    .meal .when {{ font-size: 11px; color: var(--muted); margin-bottom: 8px; }}
-    .course {{ margin-bottom: 10px; }}
-    .course h4 {{
-      margin: 0 0 4px; font-size: 12px; color: var(--blue); font-weight: 700;
-    }}
-    .course ul {{ margin: 0; padding: 0 0 0 16px; }}
-    .course li {{ font-size: 13.5px; margin: 2px 0; }}
-    .course li.theme {{ list-style: none; margin-left: -16px; font-weight: 700; color: var(--green); }}
-    .empty {{ color: var(--muted); font-size: 13px; padding: 8px 0; }}
-    footer {{ color: var(--muted); font-size: 12px; margin-top: 28px; }}
-    @media print {{
-      header {{ position: static; background: #fff; }}
-      .dates, .loc-nav, .views {{ display: none; }}
-      section.place {{ break-inside: avoid; }}
-    }}
+      }
+      .dates::-webkit-scrollbar { display: none; }
+      .dates button { flex: 0 0 auto; }
+      section.place { padding: 14px 12px 12px; }
+      .meal { padding: 10px 10px 6px; }
+      .course li, .cafe-cell li { font-size: 13px; }
+      .course ul, .cafe-cell ul { padding-left: 14px; }
+    }
+    @media print {
+      header { position: static; background: #fff; }
+      .dates, .loc-nav, .views, .head-actions, .share-btn, .live { display: none; }
+      section.place { break-inside: avoid; }
+    }
   </style>
 </head>
 <body>
   <header>
     <div class="wrap">
-      <h1>삼성서울병원 주간 식단</h1>
+      <div class="title-row">
+        <h1>삼성서울병원 주간 식단</h1>
+        <div class="head-actions">
+          <button type="button" class="pill-btn" id="install-btn" hidden>앱으로 추가</button>
+          <button type="button" class="pill-btn" id="theme-btn">다크 모드</button>
+        </div>
+      </div>
       <div class="sub" id="weekline"></div>
       <div class="dates" id="dates" role="tablist" aria-label="날짜 선택"></div>
       <div class="views" id="views" hidden>조회수를 불러오는 중</div>
@@ -601,100 +673,252 @@ def render_html(payload: dict) -> str:
     </div>
   </header>
   <main class="wrap" id="main"></main>
-  <script id="meal-data" type="application/json">{data_json}</script>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script id="meal-data" type="application/json">__MEAL_DATA__</script>
   <script>
     const DATA = JSON.parse(document.getElementById("meal-data").textContent);
+    const SITE_URL = "https://iamguno.github.io/smc-weekly-menu/";
     const STAFF = ["본관 직원식당", "암병원 직원식당"];
     const CAFES = ["본관 밀카페", "암병원 밀카페"];
     const ILWON = "일원역캠퍼스 식당";
-    const SHORT = {{
+    const SHORT = {
       "본관 직원식당": "본관", "암병원 직원식당": "암병원",
       "본관 밀카페": "본관", "암병원 밀카페": "암병원",
-    }};
+    };
     const MEAL_ORDER = ["아침", "점심", "저녁", "야간"];
     const CAFE_CATS = ["빵", "샐러드", "랩·샌드위치", "컵밥"];
-    const today = new Date();
-    const todayIso = [
-      today.getFullYear(),
-      String(today.getMonth() + 1).padStart(2, "0"),
-      String(today.getDate()).padStart(2, "0"),
-    ].join("-");
+    const SLOTS = [...MEAL_ORDER, "밀카페", "일원역캠퍼스"];
+    const TAGS = [
+      [/\[인기메뉴\]/, "인기", "hot"],
+      [/\[앵콜메뉴\]/, "앵콜", "encore"],
+      [/\[시즌메뉴\]/, "시즌", "season"],
+      [/\[브랜드콜라보\]|^브랜드콜라보\s*-\s*/, "콜라보", "collab"],
+      [/\(NEW\)|^NEW(?=[가-힣\s(])/, "NEW", "new"],
+    ];
+
+    function isoOf(d) {
+      return [d.getFullYear(), String(d.getMonth() + 1).padStart(2, "0"), String(d.getDate()).padStart(2, "0")].join("-");
+    }
+    const loadedAt = new Date();
+    const todayIso = isoOf(loadedAt);
+    const yesterdayIso = isoOf(new Date(loadedAt.getFullYear(), loadedAt.getMonth(), loadedAt.getDate() - 1));
 
     const weekline = document.getElementById("weekline");
     weekline.textContent = DATA.week + " · " + DATA.range;
 
     const datesEl = document.getElementById("dates");
     const viewsEl = document.getElementById("views");
-    const viewsByDay = {{}};
+    const viewsByDay = {};
     const COUNT_NS = "iamguno.github.io";
     const COUNT_BASE = "https://abacus.jsn.cam";
     let selected = DATA.days.some(d => d.date === todayIso) ? todayIso : DATA.days[0].date;
 
-    function dayOf(iso) {{
+    function dayOf(iso) {
       return DATA.days.find(d => d.date === iso);
-    }}
+    }
 
-    function renderDateButtons() {{
+    // ---- 운영 시간 ----
+    function hasMenu(day, loc, meal) {
+      const m = ((day.locations[loc] || {})[meal]) || {};
+      return Object.keys(m).some(k => k !== "안내" && m[k] && m[k].length);
+    }
+
+    function isRestDay(day) {
+      const wd = new Date(day.date + "T00:00:00").getDay();
+      if (wd === 0 || wd === 6) return true;
+      return CAFES.some(loc => {
+        const c = (day.locations[loc] || {})["카페"];
+        return c && c["안내"];
+      });
+    }
+
+    function ranges(day, text) {
+      if (!text) return [];
+      const rest = isRestDay(day);
+      if (/\(평일\)/.test(text) && rest) return [];
+      const base = new Date(day.date + "T00:00:00").getTime();
+      const out = [];
+      text.split("·").forEach(part => {
+        part = part.trim();
+        if (part.startsWith("평일") && rest) return;
+        if (part.startsWith("주말") && !rest) return;
+        const m = part.match(/(\d{1,2}):(\d{2})\s*[–-]\s*(\d{1,2}):(\d{2})/);
+        if (!m) return;
+        const s = Number(m[1]) * 60 + Number(m[2]);
+        let e = Number(m[3]) * 60 + Number(m[4]);
+        if (e <= s) e += 1440;
+        out.push([base + s * 60000, base + e * 60000]);
+      });
+      return out;
+    }
+
+    const openAt = (rs, t) => rs.some(([s, e]) => s <= t && t < e);
+
+    function slotRanges(day, slot) {
+      if (MEAL_ORDER.includes(slot)) {
+        return STAFF.flatMap(loc => hasMenu(day, loc, slot) ? ranges(day, DATA.hours[loc][slot]) : []);
+      }
+      if (slot === "밀카페") {
+        return CAFES.some(loc => hasMenu(day, loc, "카페")) ? ranges(day, DATA.hours[CAFES[0]]["운영"]) : [];
+      }
+      return Object.keys(DATA.hours[ILWON])
+        .flatMap(meal => hasMenu(day, ILWON, meal) ? ranges(day, DATA.hours[ILWON][meal]) : []);
+    }
+
+    function liveStatus(day, t) {
+      const open = new Set();
+      let next = null;
+      let nextStart = Infinity;
+      SLOTS.forEach(slot => {
+        const rs = slotRanges(day, slot);
+        if (openAt(rs, t)) open.add(slot);
+        if (!MEAL_ORDER.includes(slot)) return;
+        rs.forEach(([s]) => {
+          if (s > t && s < nextStart) { nextStart = s; next = slot; }
+        });
+      });
+      const mealOpen = MEAL_ORDER.some(s => open.has(s));
+      return { open, next: mealOpen ? null : next };
+    }
+
+    function initialFocus() {
+      const t = Date.now();
+      const yesterday = dayOf(yesterdayIso);
+      if (yesterday && openAt(slotRanges(yesterday, "야간"), t)) return [yesterdayIso, "야간"];
+      const today = dayOf(todayIso);
+      if (!today) return [DATA.days[0].date, null];
+      const st = liveStatus(today, t);
+      return [todayIso, MEAL_ORDER.find(s => st.open.has(s)) || st.next];
+    }
+
+    function liveBadge(text, kind) {
+      const el = document.createElement("span");
+      el.className = "live live-" + kind;
+      el.textContent = text;
+      return el;
+    }
+
+    function refreshLive() {
+      document.querySelectorAll(".live").forEach(el => el.remove());
+      document.querySelectorAll("#locnav a").forEach(a => a.classList.remove("is-live"));
+      if (selected !== todayIso && selected !== yesterdayIso) return;
+      const day = dayOf(selected);
+      const t = Date.now();
+      const st = liveStatus(day, t);
+      SLOTS.forEach(slot => {
+        const head = document.querySelector('[data-slot="' + slot + '"] .slot-head h2');
+        if (!head) return;
+        if (st.open.has(slot)) {
+          head.after(liveBadge("운영 중", "open"));
+          const a = document.querySelector('#locnav a[data-slot="' + slot + '"]');
+          if (a) a.classList.add("is-live");
+        } else if (st.next === slot) {
+          head.after(liveBadge("다음 식사", "next"));
+        }
+      });
+      document.querySelectorAll(".meal[data-loc]").forEach(card => {
+        const loc = card.dataset.loc;
+        const meal = card.dataset.meal;
+        if (hasMenu(day, loc, meal) && openAt(ranges(day, DATA.hours[loc][meal]), t)) {
+          card.querySelector(".when").appendChild(liveBadge("운영 중", "open"));
+        }
+      });
+    }
+
+    // ---- 화면 ----
+    function renderDateButtons() {
       datesEl.innerHTML = "";
-      DATA.days.forEach(d => {{
+      DATA.days.forEach(d => {
         const b = document.createElement("button");
         b.type = "button";
         b.textContent = d.label;
         b.setAttribute("aria-selected", d.date === selected ? "true" : "false");
-        if (d.date === todayIso) {{
+        if (d.date === todayIso) {
           b.classList.add("is-today");
           if (d.date === selected) b.textContent = d.label + " · 오늘";
-        }}
-        b.addEventListener("click", () => {{
+        }
+        b.addEventListener("click", () => {
           selected = d.date;
           render();
-        }});
+        });
         datesEl.appendChild(b);
-      }});
+      });
       const sel = datesEl.querySelector('[aria-selected="true"]');
-      if (sel && datesEl.scrollWidth > datesEl.clientWidth) {{
+      if (sel && datesEl.scrollWidth > datesEl.clientWidth) {
         datesEl.scrollLeft = sel.offsetLeft - datesEl.offsetLeft - (datesEl.clientWidth - sel.offsetWidth) / 2;
-      }}
-    }}
+      }
+    }
 
-    function itemList(items) {{
+    function itemList(items) {
       const ul = document.createElement("ul");
-      items.forEach(it => {{
+      items.forEach(it => {
         const li = document.createElement("li");
-        const isTheme = /^<<.+>>$/.test(it) || (/^\\*.+\\*$/.test(it) && it.length < 40);
-        li.textContent = isTheme ? it.replace(/^<<|>>$/g, "").replace(/^\\*|\\*$/g, "") : it;
-        if (isTheme) li.className = "theme";
+        const isTheme = /^<<.+>>$/.test(it) || (/^\*.+\*$/.test(it) && it.length < 40);
+        if (isTheme) {
+          li.className = "theme";
+          li.textContent = it.replace(/^<<|>>$/g, "").replace(/^\*|\*$/g, "");
+        } else {
+          let text = it;
+          TAGS.forEach(([re, label, cls]) => {
+            if (!re.test(text)) return;
+            text = text.replace(re, "");
+            const tag = document.createElement("span");
+            tag.className = "tag tag-" + cls;
+            tag.textContent = label;
+            li.appendChild(tag);
+          });
+          text = text.trim();
+          if (!text && ul.lastChild && !ul.lastChild.classList.contains("theme")) {
+            ul.lastChild.prepend(...li.childNodes);
+            return;
+          }
+          li.appendChild(document.createTextNode(text));
+        }
         ul.appendChild(li);
-      }});
+      });
       return ul;
-    }}
+    }
 
-    function emptyNote(text) {{
+    function emptyNote(text) {
       const el = document.createElement("div");
       el.className = "empty";
       el.textContent = text;
       return el;
-    }}
+    }
 
-    function slotSection(id, title, hoursText) {{
+    function slotSection(slot, hoursText) {
       const sec = document.createElement("section");
       sec.className = "place";
-      sec.id = "slot-" + id;
+      sec.id = "slot-" + slot;
+      sec.dataset.slot = slot;
+      const head = document.createElement("div");
+      head.className = "slot-head";
       const h2 = document.createElement("h2");
-      h2.textContent = title;
-      sec.appendChild(h2);
-      if (hoursText) {{
+      h2.textContent = slot;
+      head.appendChild(h2);
+      const share = document.createElement("button");
+      share.type = "button";
+      share.className = "pill-btn share-btn";
+      share.textContent = "공유";
+      share.addEventListener("click", () => shareSlot(dayOf(selected), slot));
+      head.appendChild(share);
+      sec.appendChild(head);
+      if (hoursText) {
         const p = document.createElement("div");
         p.className = "hours-line";
         p.textContent = hoursText;
         sec.appendChild(p);
-      }}
+      }
       return sec;
-    }}
+    }
 
-    function courseCard(title, hours, courses) {{
+    function courseCard(title, hours, courses, loc, meal) {
       const card = document.createElement("div");
       card.className = "meal";
+      if (loc) {
+        card.dataset.loc = loc;
+        card.dataset.meal = meal;
+      }
       const h3 = document.createElement("h3");
       h3.textContent = title;
       card.appendChild(h3);
@@ -704,91 +928,98 @@ def render_html(payload: dict) -> str:
       card.appendChild(when);
       const names = Object.keys(courses).filter(n => courses[n] && courses[n].length);
       if (!names.length) card.appendChild(emptyNote("이 날은 메뉴가 없습니다."));
-      names.forEach(name => {{
+      names.forEach(name => {
         const c = document.createElement("div");
         c.className = "course";
-        if (!(names.length === 1 && (name === "메뉴" || name === "안내"))) {{
+        if (!(names.length === 1 && (name === "메뉴" || name === "안내"))) {
           const h4 = document.createElement("h4");
           h4.textContent = name;
           c.appendChild(h4);
-        }}
+        }
         c.appendChild(itemList(courses[name]));
         card.appendChild(c);
-      }});
+      });
       return card;
-    }}
+    }
 
-    function renderMealSlot(day, meal) {{
-      const sec = slotSection(meal, meal, "");
+    function renderMealSlot(day, meal) {
+      const sec = slotSection(meal, "");
       const grid = document.createElement("div");
       grid.className = "meals";
-      STAFF.filter(loc => DATA.hours[loc][meal]).forEach(loc => {{
-        const courses = (day.locations[loc] || {{}})[meal] || {{}};
-        grid.appendChild(courseCard(SHORT[loc], DATA.hours[loc][meal], courses));
-      }});
+      STAFF.filter(loc => DATA.hours[loc][meal]).forEach(loc => {
+        const courses = (day.locations[loc] || {})[meal] || {};
+        grid.appendChild(courseCard(SHORT[loc], DATA.hours[loc][meal], courses, loc, meal));
+      });
       sec.appendChild(grid);
       return sec;
-    }}
+    }
 
-    function renderIlwonSlot(day) {{
-      const sec = slotSection("일원역캠퍼스", "일원역캠퍼스", "");
-      const meals = day.locations[ILWON] || {{}};
-      if (!Object.values(meals).some(m => Object.keys(m).length)) {{
+    function renderIlwonSlot(day) {
+      const sec = slotSection("일원역캠퍼스", "");
+      const meals = day.locations[ILWON] || {};
+      if (!Object.values(meals).some(m => Object.keys(m).length)) {
         sec.appendChild(emptyNote("이 날은 운영하지 않습니다."));
         return sec;
-      }}
+      }
       const grid = document.createElement("div");
       grid.className = "meals";
-      Object.keys(DATA.hours[ILWON]).forEach(meal => {{
-        grid.appendChild(courseCard(meal, DATA.hours[ILWON][meal], meals[meal] || {{}}));
-      }});
+      Object.keys(DATA.hours[ILWON]).forEach(meal => {
+        grid.appendChild(courseCard(meal, DATA.hours[ILWON][meal], meals[meal] || {}, ILWON, meal));
+      });
       sec.appendChild(grid);
       return sec;
-    }}
+    }
 
-    function renderCafeSlot(day) {{
-      const sec = slotSection("밀카페", "밀카페", DATA.hours[CAFES[0]]["운영"]);
-      const menus = CAFES.map(loc => ((day.locations[loc] || {{}})["카페"]) || {{}});
+    function renderCafeSlot(day) {
+      const sec = slotSection("밀카페", DATA.hours[CAFES[0]]["운영"]);
+      const menus = CAFES.map(loc => ((day.locations[loc] || {})["카페"]) || {});
       const cats = ["안내", ...CAFE_CATS].filter(cat => menus.some(m => m[cat] && m[cat].length));
-      if (!cats.length) {{
+      if (!cats.length) {
         sec.appendChild(emptyNote("이 날은 밀카페를 운영하지 않습니다."));
         return sec;
-      }}
+      }
       const grid = document.createElement("div");
       grid.className = "cafe-grid";
-      CAFES.forEach(loc => {{
+      CAFES.forEach(loc => {
         const h3 = document.createElement("h3");
         h3.className = "cafe-head";
         h3.textContent = SHORT[loc];
         grid.appendChild(h3);
-      }});
-      cats.forEach(cat => {{
-        if (cat !== "안내") {{
+      });
+      cats.forEach(cat => {
+        if (cat !== "안내") {
           const label = document.createElement("h4");
           label.className = "cafe-cat";
           label.textContent = cat;
           grid.appendChild(label);
-        }}
-        CAFES.forEach((loc, i) => {{
+        }
+        CAFES.forEach((loc, i) => {
           const cell = document.createElement("div");
           cell.className = "cafe-cell";
           const hours = cat !== "안내" && DATA.hours[loc][cat];
-          if (hours) {{
+          if (hours) {
             const when = document.createElement("div");
             when.className = "when";
             when.textContent = hours;
             cell.appendChild(when);
-          }}
+          }
           const items = menus[i][cat];
           cell.appendChild(items && items.length ? itemList(items) : emptyNote("—"));
           grid.appendChild(cell);
-        }});
-      }});
+        });
+      });
       sec.appendChild(grid);
       return sec;
-    }}
+    }
 
-    function render() {{
+    function scrollToSlot(slot, behavior) {
+      const target = document.getElementById("slot-" + slot);
+      if (!target) return;
+      const offset = document.querySelector("header").offsetHeight + 8;
+      window.scrollTo({ top: target.getBoundingClientRect().top + window.scrollY - offset, behavior });
+    }
+
+    function render() {
       renderDateButtons();
       const day = dayOf(selected);
       const main = document.getElementById("main");
@@ -796,53 +1027,184 @@ def render_html(payload: dict) -> str:
       const locnav = document.getElementById("locnav");
       locnav.innerHTML = "";
 
-      [...MEAL_ORDER, "밀카페", "일원역캠퍼스"].forEach(slot => {{
+      SLOTS.forEach(slot => {
         const a = document.createElement("a");
         a.href = "#slot-" + slot;
+        a.dataset.slot = slot;
         a.textContent = slot;
-        a.addEventListener("click", e => {{
-          const target = document.getElementById("slot-" + slot);
-          if (!target) return;
+        a.addEventListener("click", e => {
           e.preventDefault();
-          const offset = document.querySelector("header").offsetHeight + 8;
-          window.scrollTo({{ top: target.getBoundingClientRect().top + window.scrollY - offset, behavior: "smooth" }});
-        }});
+          scrollToSlot(slot, "smooth");
+        });
         locnav.appendChild(a);
         main.appendChild(
           slot === "밀카페" ? renderCafeSlot(day)
           : slot === "일원역캠퍼스" ? renderIlwonSlot(day)
           : renderMealSlot(day, slot)
         );
-      }});
+      });
 
       const foot = document.createElement("footer");
       foot.textContent = DATA.cafeNote + " 메뉴·원산지는 당일 사정에 따라 바뀔 수 있습니다.";
       main.appendChild(foot);
-    }}
+      refreshLive();
+    }
 
-    async function countGet(key) {{
+    // ---- 공유 ----
+    const toastEl = document.getElementById("toast");
+    let toastTimer = null;
+    function toast(text, ms) {
+      toastEl.textContent = text;
+      toastEl.classList.add("show");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toastEl.classList.remove("show"), ms || 2200);
+    }
+
+    function cleanItem(it) {
+      return it
+        .replace(/^<<|>>$/g, "").replace(/^\*+|\*+$/g, "")
+        .replace(/\[[^\]]*\]/g, "").replace(/\(NEW\)/g, "").replace(/^NEW(?=[가-힣\s(])/, "")
+        .replace(/\([^()]*:[^()]*\)/g, "")
+        .replace(/\s+/g, " ").trim();
+    }
+
+    function joinItems(items) {
+      return items.map(cleanItem).filter(Boolean).join(", ");
+    }
+
+    function courseLines(courses) {
+      const names = Object.keys(courses).filter(n => courses[n] && courses[n].length);
+      return names.map(n => (names.length === 1 && (n === "메뉴" || n === "안내") ? "" : n + ": ") + joinItems(courses[n]));
+    }
+
+    function shareText(day, slot) {
+      const lines = ["[SMC 식단] " + day.label + " " + slot];
+      if (MEAL_ORDER.includes(slot)) {
+        STAFF.forEach(loc => {
+          const body = courseLines((day.locations[loc] || {})[slot] || {});
+          if (body.length) lines.push("", "■ " + SHORT[loc], ...body);
+        });
+      } else if (slot === "밀카페") {
+        const menus = CAFES.map(loc => ((day.locations[loc] || {})["카페"]) || {});
+        ["안내", ...CAFE_CATS].forEach(cat => {
+          const parts = CAFES
+            .map((loc, i) => (menus[i][cat] && menus[i][cat].length ? SHORT[loc] + ": " + joinItems(menus[i][cat]) : null))
+            .filter(Boolean);
+          if (parts.length) lines.push("■ " + cat + " — " + parts.join(" / "));
+        });
+      } else {
+        const meals = day.locations[ILWON] || {};
+        Object.keys(DATA.hours[ILWON]).forEach(meal => {
+          const body = courseLines(meals[meal] || {});
+          if (body.length) lines.push("", "■ " + meal, ...body);
+        });
+      }
+      if (lines.length === 1) lines.push("", "이 날은 메뉴가 없습니다.");
+      lines.push("", SITE_URL);
+      return lines.join("\n");
+    }
+
+    async function copyText(text) {
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch (err) {
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        ta.setAttribute("readonly", "");
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        ta.remove();
+      }
+    }
+
+    async function shareSlot(day, slot) {
+      const text = shareText(day, slot);
+      if (navigator.share && window.matchMedia("(pointer: coarse)").matches) {
+        try {
+          await navigator.share({ text });
+          return;
+        } catch (err) {
+          if (err && err.name === "AbortError") return;
+        }
+      }
+      await copyText(text);
+      toast("복사했어요. 카톡에 붙여넣기 하세요.");
+    }
+
+    // ---- 다크 모드 ----
+    const themeBtn = document.getElementById("theme-btn");
+    const themeMeta = document.querySelector('meta[name="theme-color"]');
+    function applyTheme(theme, save) {
+      document.documentElement.dataset.theme = theme;
+      themeBtn.textContent = theme === "dark" ? "라이트 모드" : "다크 모드";
+      themeMeta.content = theme === "dark" ? "#151311" : "#f4f1ea";
+      if (save) {
+        try { localStorage.setItem("theme", theme); } catch (err) {}
+      }
+    }
+    applyTheme(document.documentElement.dataset.theme, false);
+    themeBtn.addEventListener("click", () => {
+      applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark", true);
+    });
+    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", e => {
+      let pref = null;
+      try { pref = localStorage.getItem("theme"); } catch (err) {}
+      if (!pref) applyTheme(e.matches ? "dark" : "light", false);
+    });
+
+    // ---- 홈 화면 앱 ----
+    const installBtn = document.getElementById("install-btn");
+    const standalone = window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+    const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+    let installEvent = null;
+    if (isIOS && !standalone) installBtn.hidden = false;
+    window.addEventListener("beforeinstallprompt", e => {
+      e.preventDefault();
+      installEvent = e;
+      installBtn.hidden = false;
+    });
+    installBtn.addEventListener("click", async () => {
+      if (installEvent) {
+        installEvent.prompt();
+        await installEvent.userChoice;
+        installEvent = null;
+        installBtn.hidden = true;
+      } else if (isIOS) {
+        toast("Safari 아래쪽 공유 버튼 → '홈 화면에 추가'를 누르세요.", 4500);
+      }
+    });
+    window.addEventListener("appinstalled", () => { installBtn.hidden = true; });
+    if ("serviceWorker" in navigator && location.protocol === "https:") {
+      navigator.serviceWorker.register("sw.js").catch(() => {});
+    }
+
+    // ---- 조회수 ----
+    async function countGet(key) {
       const res = await fetch(COUNT_BASE + "/get/" + COUNT_NS + "/" + encodeURIComponent(key));
       if (res.status === 404) return 0;
       if (!res.ok) throw new Error("count get");
       const data = await res.json();
       return Number(data.value) || 0;
-    }}
+    }
 
-    async function countHit(key) {{
+    async function countHit(key) {
       const res = await fetch(COUNT_BASE + "/hit/" + COUNT_NS + "/" + encodeURIComponent(key));
       if (!res.ok) throw new Error("count hit");
       const data = await res.json();
       return Number(data.value) || 0;
-    }}
+    }
 
-    async function loadViews() {{
+    async function loadViews() {
       const onSite = location.hostname === "iamguno.github.io";
-      try {{
-        for (const d of DATA.days) {{
+      try {
+        for (const d of DATA.days) {
           viewsByDay[d.date] = d.date === todayIso && onSite
             ? await countHit("menu-" + d.date)
             : await countGet("menu-" + d.date);
-        }}
+        }
         const todayCount = viewsByDay[todayIso] || 0;
         const weekCount = DATA.days.reduce((s, day) => s + (viewsByDay[day.date] || 0), 0);
         viewsEl.hidden = false;
@@ -850,18 +1212,25 @@ def render_html(payload: dict) -> str:
         const summary = document.createElement("div");
         summary.innerHTML = "조회수 · 오늘 <strong>" + todayCount + "</strong>회 · 이번 주 <strong>" + weekCount + "</strong>회";
         viewsEl.appendChild(summary);
-        DATA.days.forEach(d => {{
+        DATA.days.forEach(d => {
           const span = document.createElement("span");
           span.className = "v-day";
           span.textContent = d.md + " " + (viewsByDay[d.date] || 0) + "회";
           viewsEl.appendChild(span);
-        }});
-      }} catch (err) {{
+        });
+      } catch (err) {
         viewsEl.hidden = true;
-      }}
-    }}
+      }
+    }
 
+    const [focusDate, focusSlot] = initialFocus();
+    selected = focusDate;
     render();
+    if (focusSlot && !location.hash) scrollToSlot(focusSlot, "auto");
+    setInterval(refreshLive, 60000);
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") refreshLive();
+    });
     loadViews();
   </script>
 </body>

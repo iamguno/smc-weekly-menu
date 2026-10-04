@@ -3,6 +3,7 @@
 *.jpg
 *.jpeg
 *.png
+!icons/*.png
 character/
 _scratch/
 __pycache__/
