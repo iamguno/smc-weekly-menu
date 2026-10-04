@@ -102,7 +102,7 @@
     .pal-body { transform-origin: 50% 100%; }
     .pal-body.boing { animation: boing 0.5s ease-out; }
     .pal img {
-      display: block; height: var(--pal-size, 46px); width: auto;
+      display: block; height: var(--pal-size, 34px); width: auto;
       filter: drop-shadow(0 3px 3px rgba(60, 40, 20, 0.18));
       -webkit-user-drag: none; pointer-events: none;
     }
@@ -325,13 +325,13 @@
     }
 
     const PALS = [
-      { name: "chiikawa", speed: 0.9, jump: 9, lines: ["우…", "야!", "울먹…", "맛있겠다…"] },
-      { name: "hachiware", speed: 1.2, jump: 10, lines: ["어떻게든 될 거야!", "오늘 점심 뭐야?", "같이 먹자~"] },
-      { name: "usagi", speed: 2.2, jump: 15, lines: ["우라!", "야하!", "하아?", "푸루루루"] },
-      { name: "momonga", speed: 1.5, jump: 11, lines: ["나 귀엽지?", "칭찬해 줘!", "그거 내 거야!"] },
-      { name: "kurimanju", speed: 0.6, jump: 7, lines: ["하아~", "한 잔 더…", "안주 뭐 있어?"] },
-      { name: "rakko", speed: 1.0, jump: 13, lines: ["…", "수련 중", "흠."] },
-      { name: "shisa", speed: 1.1, jump: 10, lines: ["열심히 할게요!", "~입니다!", "어서 오세요!"] },
+      { name: "chiikawa", speed: 0.45, jump: 7, lines: ["우…", "야!", "울먹…", "맛있겠다…"] },
+      { name: "hachiware", speed: 0.6, jump: 8, lines: ["어떻게든 될 거야!", "오늘 점심 뭐야?", "같이 먹자~"] },
+      { name: "usagi", speed: 1.1, jump: 11, lines: ["우라!", "야하!", "하아?", "푸루루루"] },
+      { name: "momonga", speed: 0.75, jump: 8, lines: ["나 귀엽지?", "칭찬해 줘!", "그거 내 거야!"] },
+      { name: "kurimanju", speed: 0.3, jump: 6, lines: ["하아~", "한 잔 더…", "안주 뭐 있어?"] },
+      { name: "rakko", speed: 0.5, jump: 10, lines: ["…", "수련 중", "흠."] },
+      { name: "shisa", speed: 0.55, jump: 8, lines: ["열심히 할게요!", "~입니다!", "어서 오세요!"] },
     ];
     const palsEl = document.getElementById("pals");
     const palsToggle = document.getElementById("pals-toggle");
@@ -340,7 +340,7 @@
     let palsFrame = null;
 
     function makePals() {
-      const size = window.innerWidth < 600 ? 36 : 46;
+      const size = window.innerWidth < 600 ? 26 : 34;
       palsEl.style.setProperty("--pal-size", size + "px");
       PALS.forEach((def, i) => {
         const el = document.createElement("div");
