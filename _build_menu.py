@@ -641,6 +641,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       border-top: 1px dashed var(--line); padding-top: 8px; margin: 2px 0 4px;
     }
     .cafe-like { border-top: 0; padding-top: 2px; }
+    .section-like { border-top: 0; padding-top: 0; margin-top: 10px; }
     .like-btn {
       appearance: none; display: inline-flex; align-items: center; gap: 4px;
       border: 1px solid var(--line); background: transparent; color: var(--muted);
@@ -714,7 +715,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       "본관 직원식당": "bg", "암병원 직원식당": "am",
       "본관 밀카페": "bc", "암병원 밀카페": "ac", "일원역캠퍼스 식당": "iw",
     };
-    const MEAL_ID = { "아침": "b", "점심": "l", "저녁": "d", "야간": "n", "카페": "c" };
+    const MEAL_ID = { "아침": "b", "점심": "l", "저녁": "d", "야간": "n", "카페": "c", "하루": "all" };
     const ON_SITE = location.hostname === "iamguno.github.io";
     const TAGS = [
       [/\[인기메뉴\]/, "인기", "hot"],
@@ -993,11 +994,14 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       }
       const grid = document.createElement("div");
       grid.className = "meals";
-      Object.keys(DATA.hours[ILWON]).forEach(meal => {
-        const key = hasMenu(day, ILWON, meal) ? likeKey(day.date, ILWON, meal) : null;
-        grid.appendChild(courseCard(meal, DATA.hours[ILWON][meal], meals[meal] || {}, ILWON, meal, key));
+      const mealNames = Object.keys(DATA.hours[ILWON]);
+      mealNames.forEach(meal => {
+        grid.appendChild(courseCard(meal, DATA.hours[ILWON][meal], meals[meal] || {}, ILWON, meal));
       });
       sec.appendChild(grid);
+      if (mealNames.some(meal => hasMenu(day, ILWON, meal))) {
+        sec.appendChild(likeRow(likeKey(day.date, ILWON, "하루"), "like-row section-like"));
+      }
       return sec;
     }
 
