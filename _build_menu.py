@@ -476,7 +476,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
-  <meta name="theme-color" content="#f4f1ea" />
+  <meta name="theme-color" content="#eaf3fc" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="SMC 식단" />
@@ -495,39 +495,43 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   </script>
   <style>
     :root {
-      --bg: #f4f1ea;
-      --paper: #fffdf8;
+      --bg: #eaf3fc;
+      --paper: #f6faff;
       --card: #ffffff;
-      --ink: #1c1916;
-      --muted: #6b645b;
-      --line: #e4ddd2;
-      --accent: #b45309;
-      --green: #3f6b4a;
-      --blue: #2f4f73;
-      --header: rgba(244, 241, 234, 0.93);
+      --ink: #1b2a4a;
+      --muted: #5f6f8c;
+      --line: #d3e2f3;
+      --accent: #2f5fc4;
+      --green: #2c7a6c;
+      --blue: #4f6a9a;
+      --header: rgba(234, 243, 252, 0.93);
       --on-ink: #ffffff;
+      --sel: #4c8be0;
+      --on-sel: #ffffff;
       --open: #1f6b3a;
       --open-bg: #dcefe1;
-      --next: #9a4a07;
-      --next-bg: #f6e6d2;
+      --next: #1d5fa8;
+      --next-bg: #dcebfb;
       color-scheme: light;
     }
     :root[data-theme="dark"] {
-      --bg: #151311;
-      --paper: #1d1a17;
-      --card: #24211e;
-      --ink: #ece6dc;
-      --muted: #a39a8e;
-      --line: #38332d;
-      --accent: #f0a35c;
-      --green: #93cba1;
-      --blue: #9dbbe0;
-      --header: rgba(21, 19, 17, 0.93);
-      --on-ink: #151311;
+      --bg: #0f1726;
+      --paper: #152036;
+      --card: #1a2742;
+      --ink: #e3ebf7;
+      --muted: #95a3bd;
+      --line: #2a3a58;
+      --accent: #8cb8f5;
+      --green: #8fd3c3;
+      --blue: #a9bde0;
+      --header: rgba(15, 23, 38, 0.93);
+      --on-ink: #0f1726;
+      --sel: #6fa3ec;
+      --on-sel: #0f1726;
       --open: #9ee0b1;
-      --open-bg: #1f3a29;
-      --next: #f3b57a;
-      --next-bg: #3b2a19;
+      --open-bg: #1d3a2e;
+      --next: #9cc6ff;
+      --next-bg: #1c3150;
       color-scheme: dark;
     }
     * { box-sizing: border-box; }
@@ -559,7 +563,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       font: inherit; font-size: 14px;
     }
     .dates button[aria-selected="true"] {
-      background: var(--ink); color: var(--on-ink); border-color: var(--ink);
+      background: var(--sel); color: var(--on-sel); border-color: var(--sel);
     }
     .dates button.is-today:not([aria-selected="true"]) {
       border-color: var(--accent); color: var(--accent);
@@ -1140,7 +1144,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     function applyTheme(theme, save) {
       document.documentElement.dataset.theme = theme;
       themeBtn.textContent = theme === "dark" ? "라이트 모드" : "다크 모드";
-      themeMeta.content = theme === "dark" ? "#151311" : "#f4f1ea";
+      themeMeta.content = theme === "dark" ? "#0f1726" : "#eaf3fc";
       if (save) {
         try { localStorage.setItem("theme", theme); } catch (err) {}
       }
