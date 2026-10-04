@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+import subprocess
 import unicodedata
 import xml.etree.ElementTree as ET
 import zipfile
@@ -144,6 +145,12 @@ def date_blocks(cells, merges, max_row, last_end):
         d = excel_date(v)
         if d:
             starts.append((r, d))
+    if starts:
+        last_start = starts[-1][0]
+        for r in range(last_start + 1, max_row + 1):
+            if cells.get((r, 1), "").strip():
+                last_end = r - 1
+                break
     blocks = []
     for i, (r, d) in enumerate(starts):
         end = starts[i + 1][0] - 1 if i + 1 < len(starts) else last_end
@@ -240,70 +247,50 @@ def parse_ilwon():
 
 # 본관 밀카페 — 주간 메뉴 이미지에서 정리
 CAFE_BONGWAN = {
-    "2026-09-28": {
-        "빵": ["초코칩머핀", "크림치즈프레즐", "블루베리베이글 + 크림치즈"],
-        "샐러드": ["만다린샐러드", "컵샐러드"],
-        "랩·샌드위치": ["햄치즈베이글샌드위치", "파프리카불고기랩"],
-        "컵밥": ["치킨가라아게덮밥"],
+    "2026-10-05": {"안내": ["대체 휴일 휴무"]},
+    "2026-10-06": {
+        "빵": ["카스테라", "빠네디까사런치롤"],
+        "샐러드": ["푸실리샐러드", "콥샐러드"],
+        "랩·샌드위치": ["너비아니토마토랩", "게맛살샌드위치", "치킨&튜나샌드위치"],
+        "컵밥": ["추억의도시락컵밥"],
     },
-    "2026-09-29": {
-        "빵": ["크로와상", "모카번", "빠네디까사런치롤"],
-        "샐러드": ["시리얼샐러드", "카프레제샐러드"],
-        "랩·샌드위치": ["크랜베리리코타샌드위치", "너비아니토마토랩"],
-        "컵밥": ["제육덮밥"],
+    "2026-10-07": {
+        "빵": ["크로와상", "모카번"],
+        "샐러드": ["시리얼샐러드", "수제요거트볼"],
+        "랩·샌드위치": ["게맛살에그랩", "칠리맛살모닝롤샌드위치", "아이돌에그샌드위치"],
+        "컵밥": ["나시고랭"],
     },
-    "2026-09-30": {
-        "빵": ["단백쿠키(그랜드아몬드)", "아몬드머핀", "먹물치아바타"],
-        "샐러드": ["견과샐러드", "수제요거트볼"],
-        "랩·샌드위치": ["치킨리코타모닝롤샌드위치", "하와이안포케랩"],
-        "컵밥": ["스팸김치볶음밥"],
+    "2026-10-08": {
+        "빵": ["블루베리머핀", "바질베이글"],
+        "샐러드": ["컵샐러드", "카프레제샐러드"],
+        "랩·샌드위치": ["단호박리코타치즈랩", "데리야끼치킨샌드위치", "햄에그샌드위치"],
+        "컵밥": ["양념치킨컵밥"],
     },
-    "2026-10-01": {
-        "빵": ["블루베리머핀", "롤롤페스츄리", "바질베이글"],
-        "샐러드": ["푸실리샐러드", "컵샐러드"],
-        "랩·샌드위치": ["할라피뇨볼로냐샌드위치", "단호박리코타치즈랩"],
-        "컵밥": ["불닭곤약오븐밥"],
-    },
-    "2026-10-02": {
-        "빵": ["하드소금빵", "소보로빵", "어니언베이글 + 크림치즈"],
-        "샐러드": ["치즈볼샐러드", "수제요거트볼"],
-        "랩·샌드위치": ["햄치즈샌드위치", "스파이시치킨랩"],
-        "컵밥": ["새우락소스오므라이스"],
-    },
+    "2026-10-09": {"안내": ["한글날 휴무"]},
 }
 
 # 암병원 밀카페 — 주간 메뉴 이미지에서 정리
 CAFE_AM = {
-    "2026-09-28": {
-        "빵": ["바게트감자뉴", "크림치즈프레즐", "녹차카스테라"],
-        "샐러드": ["보코치니샐러드", "푸실리샐러드", "수제요거트"],
-        "랩·샌드위치": ["랜치소시지랩", "폴드포크샌드위치"],
-        "컵밥": ["스팸김치컵밥"],
-    },
-    "2026-09-29": {
-        "빵": ["멀티그레인치아바타", "피칸파이", "고구마케이크"],
+    "2026-10-05": {"안내": ["대체 휴일 휴무"]},
+    "2026-10-06": {
+        "빵": ["올리브 포카치아", "치즈케이크", "크림치즈프레즐"],
         "샐러드": ["닭가슴살샐러드", "구운감자샐러드", "수제요거트"],
-        "랩·샌드위치": ["멕시칸치킨랩", "햄치즈크라상샌드위치"],
-        "컵밥": ["치킨마요컵밥"],
+        "랩·샌드위치": ["랜치소시지랩", "블랙번샌드위치"],
+        "컵밥": ["참치생야채컵밥"],
     },
-    "2026-09-30": {
-        "빵": ["호밀빵", "갈릭치즈버거볼", "플레인카스테라"],
+    "2026-10-07": {
+        "빵": ["통밀베이글 + 크림치즈", "얼그레이스콘", "소보로빵"],
         "샐러드": ["견과샐러드", "푸실리샐러드", "수제요거트"],
-        "랩·샌드위치": ["비프치폴레샐러드랩", "대만식햄치즈샌드위치"],
-        "컵밥": ["떡갈비컵밥"],
+        "랩·샌드위치": ["멕시칸치킨랩", "불고기치즈버거"],
+        "컵밥": ["닭갈비컵밥"],
     },
-    "2026-10-01": {
-        "빵": ["무화과로프", "크림치즈프레즐", "크로와상"],
+    "2026-10-08": {
+        "빵": ["무화과로프", "크림치즈프레즐", "플레인카스테라"],
         "샐러드": ["구운버섯샐러드", "구운감자샐러드", "수제요거트"],
-        "랩·샌드위치": ["케이준치킨랩", "로제치킨샌드위치"],
-        "컵밥": ["소시지오므라이스컵밥"],
+        "랩·샌드위치": ["케이준치킨시저랩", "대만식햄치즈샌드위치"],
+        "컵밥": ["버터장조림컵밥"],
     },
-    "2026-10-02": {
-        "빵": ["바질베이글", "얼그레이스콘", "소보로빵"],
-        "샐러드": ["닭가슴살샐러드", "보코치니샐러드", "수제요거트"],
-        "랩·샌드위치": ["간장불고기샐러드랩", "BELT샌드위치"],
-        "컵밥": ["불고기컵밥"],
-    },
+    "2026-10-09": {"안내": ["한글날 휴무"]},
 }
 
 HOURS = {
@@ -380,12 +367,38 @@ def build_days(bongwan, am, ilwon):
     return days
 
 
+def published_days() -> list[dict]:
+    """Days from the last committed index.html (the local copy is usually deleted)."""
+    try:
+        html = subprocess.run(
+            ["git", "show", "HEAD:index.html"],
+            cwd=ROOT, capture_output=True, text=True, check=True,
+        ).stdout
+    except (OSError, subprocess.CalledProcessError):
+        return []
+    m = re.search(r'<script id="meal-data" type="application/json">(.*?)</script>', html, re.S)
+    if not m:
+        return []
+    return json.loads(m.group(1)).get("days", [])
+
+
+def week_label(monday: datetime) -> str:
+    thursday = monday + timedelta(days=3)
+    return f"{thursday.year}년 {thursday.month}월 {(thursday.day - 1) // 7 + 1}주"
+
+
 def main():
     bongwan = parse_bongwan()
     am = parse_am()
     week_isos = sorted(set(bongwan) | set(am) | set(CAFE_BONGWAN) | set(CAFE_AM))
     ilwon, ilwon_pending = align_ilwon(parse_ilwon(), week_isos)
     days = build_days(bongwan, am, ilwon)
+    monday = datetime.strptime(days[0]["date"], "%Y-%m-%d")
+    # Sunday night 야간 is served past midnight, so keep the previous Sunday visible on rollover.
+    prev_sunday = (monday - timedelta(days=1)).strftime("%Y-%m-%d")
+    carried = next((d for d in published_days() if d["date"] == prev_sunday), None)
+    if carried:
+        days.insert(0, carried)
     first = datetime.strptime(days[0]["date"], "%Y-%m-%d")
     last = datetime.strptime(days[-1]["date"], "%Y-%m-%d")
     cafe_open = sorted(
@@ -393,21 +406,23 @@ def main():
     )
     cafe_first = datetime.strptime(cafe_open[0], "%Y-%m-%d")
     cafe_last = datetime.strptime(cafe_open[-1], "%Y-%m-%d")
+    holidays = sorted(
+        d for d, meals in CAFE_BONGWAN.items() if list(meals.keys()) == ["안내"]
+    )
     cafe_note = (
         f"본관·암병원 밀카페는 평일({cafe_first.month}/{cafe_first.day}"
         f"–{cafe_last.month}/{cafe_last.day})만 운영합니다."
     )
-    holidays = sorted(
-        d for d, meals in CAFE_BONGWAN.items() if list(meals.keys()) == ["안내"]
-    )
     if holidays:
-        h0 = datetime.strptime(holidays[0], "%Y-%m-%d")
-        h1 = datetime.strptime(holidays[-1], "%Y-%m-%d")
-        cafe_note += f" {h0.month}/{h0.day}–{h1.month}/{h1.day}는 추석 연휴입니다."
+        parts = []
+        for iso in holidays:
+            h = datetime.strptime(iso, "%Y-%m-%d")
+            parts.append(f"{h.month}/{h.day} {CAFE_BONGWAN[iso]['안내'][0]}")
+        cafe_note = cafe_note[:-1] + "(" + ", ".join(parts) + ")."
     if ilwon_pending:
         cafe_note += " 일원역캠퍼스 식단은 업데이트 예정입니다."
     payload = {
-        "week": f"{first.year}년 {first.month}월 {first.day // 7 + 1}주",
+        "week": week_label(monday),
         "range": (
             f"{first.month}/{first.day} ({WEEKDAYS_KO[first.weekday()]}) – "
             f"{last.month}/{last.day} ({WEEKDAYS_KO[last.weekday()]})"
