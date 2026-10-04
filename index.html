@@ -44,23 +44,23 @@
       color-scheme: light;
     }
     :root[data-theme="dark"] {
-      --bg: #0f1726;
-      --paper: #152036;
-      --card: #1a2742;
-      --ink: #e3ebf7;
-      --muted: #95a3bd;
-      --line: #2a3a58;
+      --bg: #0d0d0f;
+      --paper: #161618;
+      --card: #1d1d20;
+      --ink: #ececee;
+      --muted: #9a9aa2;
+      --line: #2e2e33;
       --accent: #8cb8f5;
       --green: #8fd3c3;
-      --blue: #a9bde0;
-      --header: rgba(15, 23, 38, 0.93);
-      --on-ink: #0f1726;
+      --blue: #aab9d6;
+      --header: rgba(13, 13, 15, 0.93);
+      --on-ink: #0d0d0f;
       --sel: #6fa3ec;
-      --on-sel: #0f1726;
+      --on-sel: #0d0d0f;
       --open: #9ee0b1;
-      --open-bg: #1d3a2e;
+      --open-bg: #1a2e22;
       --next: #9cc6ff;
-      --next-bg: #1c3150;
+      --next-bg: #1a2638;
       color-scheme: dark;
     }
     * { box-sizing: border-box; }
@@ -673,7 +673,7 @@
     function applyTheme(theme, save) {
       document.documentElement.dataset.theme = theme;
       themeBtn.textContent = theme === "dark" ? "라이트 모드" : "다크 모드";
-      themeMeta.content = theme === "dark" ? "#0f1726" : "#eaf3fc";
+      themeMeta.content = theme === "dark" ? "#0d0d0f" : "#eaf3fc";
       if (save) {
         try { localStorage.setItem("theme", theme); } catch (err) {}
       }
