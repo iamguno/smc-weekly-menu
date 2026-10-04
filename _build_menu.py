@@ -700,7 +700,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   <script id="meal-data" type="application/json">__MEAL_DATA__</script>
   <script>
     const DATA = JSON.parse(document.getElementById("meal-data").textContent);
-    const SITE_URL = "https://iamguno.github.io/smc-weekly-menu/";
     const STAFF = ["본관 직원식당", "암병원 직원식당"];
     const CAFES = ["본관 밀카페", "암병원 밀카페"];
     const ILWON = "일원역캠퍼스 식당";
@@ -1144,7 +1143,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         });
       }
       if (lines.length === 1) lines.push("", "이 날은 메뉴가 없습니다.");
-      lines.push("", SITE_URL);
       return lines.join("\n");
     }
 
