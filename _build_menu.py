@@ -642,8 +642,13 @@ def render_html(payload: dict) -> str:
   <script id="meal-data" type="application/json">{data_json}</script>
   <script>
     const DATA = JSON.parse(document.getElementById("meal-data").textContent);
-    const STAFF = ["본관 직원식당", "암병원 직원식당", "일원역캠퍼스 식당"];
+    const STAFF = ["본관 직원식당", "암병원 직원식당"];
     const CAFES = ["본관 밀카페", "암병원 밀카페"];
+    const ILWON = "일원역캠퍼스 식당";
+    const SHORT = {{
+      "본관 직원식당": "본관", "암병원 직원식당": "암병원",
+      "본관 밀카페": "본관", "암병원 밀카페": "암병원",
+    }};
     const MEAL_ORDER = ["아침", "점심", "저녁", "야간"];
     const CAFE_CATS = ["빵", "샐러드", "랩·샌드위치", "컵밥"];
     const today = new Date();
@@ -725,35 +730,55 @@ def render_html(payload: dict) -> str:
       return sec;
     }}
 
+    function courseCard(title, hours, courses) {{
+      const card = document.createElement("div");
+      card.className = "meal";
+      const h3 = document.createElement("h3");
+      h3.textContent = title;
+      card.appendChild(h3);
+      const when = document.createElement("div");
+      when.className = "when";
+      when.textContent = hours;
+      card.appendChild(when);
+      const names = Object.keys(courses).filter(n => courses[n] && courses[n].length);
+      if (!names.length) card.appendChild(emptyNote("이 날은 메뉴가 없습니다."));
+      names.forEach(name => {{
+        const c = document.createElement("div");
+        c.className = "course";
+        if (!(names.length === 1 && (name === "메뉴" || name === "안내"))) {{
+          const h4 = document.createElement("h4");
+          h4.textContent = name;
+          c.appendChild(h4);
+        }}
+        c.appendChild(itemList(courses[name]));
+        card.appendChild(c);
+      }});
+      return card;
+    }}
+
     function renderMealSlot(day, meal) {{
       const sec = slotSection(meal, meal, "");
       const grid = document.createElement("div");
       grid.className = "meals";
-      STAFF.filter(loc => DATA.hours[loc] && DATA.hours[loc][meal]).forEach(loc => {{
-        const card = document.createElement("div");
-        card.className = "meal";
-        const h3 = document.createElement("h3");
-        h3.textContent = loc;
-        card.appendChild(h3);
-        const when = document.createElement("div");
-        when.className = "when";
-        when.textContent = DATA.hours[loc][meal];
-        card.appendChild(when);
+      STAFF.filter(loc => DATA.hours[loc][meal]).forEach(loc => {{
         const courses = (day.locations[loc] || {{}})[meal] || {{}};
-        const names = Object.keys(courses).filter(n => courses[n] && courses[n].length);
-        if (!names.length) card.appendChild(emptyNote("이 날은 메뉴가 없습니다."));
-        names.forEach(name => {{
-          const c = document.createElement("div");
-          c.className = "course";
-          if (!(names.length === 1 && (name === "메뉴" || name === "안내"))) {{
-            const h4 = document.createElement("h4");
-            h4.textContent = name;
-            c.appendChild(h4);
-          }}
-          c.appendChild(itemList(courses[name]));
-          card.appendChild(c);
-        }});
-        grid.appendChild(card);
+        grid.appendChild(courseCard(SHORT[loc], DATA.hours[loc][meal], courses));
+      }});
+      sec.appendChild(grid);
+      return sec;
+    }}
+
+    function renderIlwonSlot(day) {{
+      const sec = slotSection("일원역캠퍼스", "일원역캠퍼스", "");
+      const meals = day.locations[ILWON] || {{}};
+      if (!Object.values(meals).some(m => Object.keys(m).length)) {{
+        sec.appendChild(emptyNote("이 날은 운영하지 않습니다."));
+        return sec;
+      }}
+      const grid = document.createElement("div");
+      grid.className = "meals";
+      Object.keys(DATA.hours[ILWON]).forEach(meal => {{
+        grid.appendChild(courseCard(meal, DATA.hours[ILWON][meal], meals[meal] || {{}}));
       }});
       sec.appendChild(grid);
       return sec;
@@ -772,7 +797,7 @@ def render_html(payload: dict) -> str:
       CAFES.forEach(loc => {{
         const h3 = document.createElement("h3");
         h3.className = "cafe-head";
-        h3.textContent = loc;
+        h3.textContent = SHORT[loc];
         grid.appendChild(h3);
       }});
       cats.forEach(cat => {{
@@ -809,7 +834,7 @@ def render_html(payload: dict) -> str:
       const locnav = document.getElementById("locnav");
       locnav.innerHTML = "";
 
-      [...MEAL_ORDER, "밀카페"].forEach(slot => {{
+      [...MEAL_ORDER, "밀카페", "일원역캠퍼스"].forEach(slot => {{
         const a = document.createElement("a");
         a.href = "#slot-" + slot;
         a.textContent = slot;
@@ -821,7 +846,11 @@ def render_html(payload: dict) -> str:
           window.scrollTo({{ top: target.getBoundingClientRect().top + window.scrollY - offset, behavior: "smooth" }});
         }});
         locnav.appendChild(a);
-        main.appendChild(slot === "밀카페" ? renderCafeSlot(day) : renderMealSlot(day, slot));
+        main.appendChild(
+          slot === "밀카페" ? renderCafeSlot(day)
+          : slot === "일원역캠퍼스" ? renderIlwonSlot(day)
+          : renderMealSlot(day, slot)
+        );
       }});
 
       const foot = document.createElement("footer");
