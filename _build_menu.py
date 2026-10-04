@@ -221,7 +221,29 @@ def parse_am():
                 }
             ),
         }
+        if d.weekday() >= 5:
+            data[d.strftime("%Y-%m-%d")] = fix_am_weekend_shift(data[d.strftime("%Y-%m-%d")])
     return data
+
+
+def fix_am_weekend_shift(meals: dict) -> dict:
+    """Some weeks put weekend dinner/night one column left (dinner under 그린테이블)."""
+    lunch = meals.get("점심", {})
+    dinner = meals.get("저녁", {})
+    night = meals.get("야간", {})
+    if "그린테이블" not in lunch or dinner.get("A코너"):
+        return meals
+    return {
+        "아침": meals.get("아침", {}),
+        "점심": drop_empty_courses({"A코너": lunch.get("A코너", [])}),
+        "저녁": drop_empty_courses({"A코너": lunch["그린테이블"]}),
+        "야간": drop_empty_courses(
+            {
+                "A코너": dinner.get("아삭아삭샐러드", []),
+                "B코너": night.get("A코너", []),
+            }
+        ),
+    }
 
 
 def parse_ilwon():
@@ -398,6 +420,8 @@ def main():
     prev_sunday = (monday - timedelta(days=1)).strftime("%Y-%m-%d")
     carried = next((d for d in published_days() if d["date"] == prev_sunday), None)
     if carried:
+        locs = carried["locations"]
+        locs["암병원 직원식당"] = fix_am_weekend_shift(locs.get("암병원 직원식당", {}))
         days.insert(0, carried)
     first = datetime.strptime(days[0]["date"], "%Y-%m-%d")
     last = datetime.strptime(days[-1]["date"], "%Y-%m-%d")
