@@ -515,9 +515,43 @@ def render_html(payload: dict) -> str:
     .course li.theme {{ list-style: none; margin-left: -16px; font-weight: 700; color: var(--green); }}
     .empty {{ color: var(--muted); font-size: 13px; padding: 8px 0; }}
     footer {{ color: var(--muted); font-size: 12px; margin-top: 28px; }}
+    .title-row {{ display: flex; align-items: center; justify-content: space-between; gap: 12px; }}
+    .pals-toggle {{
+      appearance: none; border: 1px solid var(--line); background: var(--paper);
+      border-radius: 999px; padding: 6px 12px; cursor: pointer; color: var(--muted);
+      font: inherit; font-size: 12px; white-space: nowrap;
+    }}
+    .pals-toggle:hover {{ color: var(--ink); border-color: var(--ink); }}
+    .pals {{ position: fixed; inset: 0; z-index: 15; pointer-events: none; overflow: hidden; }}
+    .pals[hidden] {{ display: none; }}
+    .pal {{
+      position: absolute; left: 0; top: 0; pointer-events: auto; cursor: pointer;
+      will-change: transform; -webkit-tap-highlight-color: transparent; user-select: none;
+    }}
+    .pal-body {{ transform-origin: 50% 100%; }}
+    .pal-body.boing {{ animation: boing 0.5s ease-out; }}
+    .pal img {{
+      display: block; height: var(--pal-size, 68px); width: auto;
+      filter: drop-shadow(0 3px 3px rgba(60, 40, 20, 0.18));
+      -webkit-user-drag: none; pointer-events: none;
+    }}
+    .pal-say {{
+      position: absolute; left: 50%; bottom: 100%; transform: translate(-50%, -4px) scale(0.6);
+      background: #fff; border: 1.5px solid #4a3a35; border-radius: 12px;
+      padding: 3px 9px; font-size: 12px; font-weight: 700; color: #4a3a35;
+      white-space: nowrap; opacity: 0; transition: opacity 0.15s, transform 0.15s;
+    }}
+    .pal-say.show {{ opacity: 1; transform: translate(-50%, -4px) scale(1); }}
+    @keyframes boing {{
+      0% {{ transform: scale(1, 1); }}
+      20% {{ transform: scale(1.25, 0.75); }}
+      45% {{ transform: scale(0.85, 1.2); }}
+      70% {{ transform: scale(1.08, 0.94); }}
+      100% {{ transform: scale(1, 1); }}
+    }}
     @media print {{
       header {{ position: static; background: #fff; }}
-      .dates, .loc-nav, .views {{ display: none; }}
+      .dates, .loc-nav, .views, .pals, .pals-toggle {{ display: none; }}
       section.place {{ break-inside: avoid; }}
     }}
   </style>
@@ -525,7 +559,10 @@ def render_html(payload: dict) -> str:
 <body>
   <header>
     <div class="wrap">
-      <h1>삼성서울병원 주간 식단</h1>
+      <div class="title-row">
+        <h1>삼성서울병원 주간 식단</h1>
+        <button type="button" class="pals-toggle" id="pals-toggle">친구들 숨기기</button>
+      </div>
       <div class="sub" id="weekline"></div>
       <div class="dates" id="dates" role="tablist" aria-label="날짜 선택"></div>
       <div class="views" id="views" hidden>조회수를 불러오는 중</div>
@@ -533,6 +570,7 @@ def render_html(payload: dict) -> str:
     </div>
   </header>
   <main class="wrap" id="main"></main>
+  <div class="pals" id="pals" aria-hidden="true"></div>
   <script id="meal-data" type="application/json">{data_json}</script>
   <script>
     const DATA = JSON.parse(document.getElementById("meal-data").textContent);
@@ -714,6 +752,114 @@ def render_html(payload: dict) -> str:
         viewsEl.hidden = true;
       }}
     }}
+
+    const PALS = [
+      {{ name: "chiikawa", speed: 0.9, jump: 9, lines: ["우…", "야!", "울먹…", "맛있겠다…"] }},
+      {{ name: "hachiware", speed: 1.2, jump: 10, lines: ["어떻게든 될 거야!", "오늘 점심 뭐야?", "같이 먹자~"] }},
+      {{ name: "usagi", speed: 2.2, jump: 15, lines: ["우라!", "야하!", "하아?", "푸루루루"] }},
+      {{ name: "momonga", speed: 1.5, jump: 11, lines: ["나 귀엽지?", "칭찬해 줘!", "그거 내 거야!"] }},
+      {{ name: "kurimanju", speed: 0.6, jump: 7, lines: ["하아~", "한 잔 더…", "안주 뭐 있어?"] }},
+      {{ name: "rakko", speed: 1.0, jump: 13, lines: ["…", "수련 중", "흠."] }},
+      {{ name: "shisa", speed: 1.1, jump: 10, lines: ["열심히 할게요!", "~입니다!", "어서 오세요!"] }},
+    ];
+    const palsEl = document.getElementById("pals");
+    const palsToggle = document.getElementById("pals-toggle");
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const pals = [];
+    let palsFrame = null;
+
+    function makePals() {{
+      const size = window.innerWidth < 600 ? 52 : 68;
+      palsEl.style.setProperty("--pal-size", size + "px");
+      PALS.forEach((def, i) => {{
+        const el = document.createElement("div");
+        el.className = "pal";
+        const body = document.createElement("div");
+        body.className = "pal-body";
+        const img = document.createElement("img");
+        img.src = "assets/characters/" + def.name + ".png";
+        img.alt = "";
+        const say = document.createElement("span");
+        say.className = "pal-say";
+        body.appendChild(img);
+        el.appendChild(say);
+        el.appendChild(body);
+        palsEl.appendChild(el);
+        const angle = Math.random() * Math.PI * 2;
+        const p = {{
+          ...def, el, body, img, say,
+          x: Math.random() * Math.max(1, window.innerWidth - size),
+          y: 120 + Math.random() * Math.max(1, window.innerHeight - size - 120),
+          vx: Math.cos(angle) * def.speed,
+          vy: Math.sin(angle) * def.speed * 0.6,
+          hop: 0, hopV: 0, hopping: false,
+          phase: i * 1.7, sayTimer: null,
+        }};
+        el.addEventListener("click", () => poke(p));
+        pals.push(p);
+      }});
+    }}
+
+    function poke(p) {{
+      p.hopping = true;
+      p.hopV = -p.jump;
+      p.vx = (Math.random() < 0.5 ? -1 : 1) * p.speed * 1.8;
+      p.body.classList.remove("boing");
+      void p.body.offsetWidth;
+      p.body.classList.add("boing");
+      p.say.textContent = p.lines[Math.floor(Math.random() * p.lines.length)];
+      p.say.classList.add("show");
+      clearTimeout(p.sayTimer);
+      p.sayTimer = setTimeout(() => p.say.classList.remove("show"), 1600);
+    }}
+
+    function stepPals(t) {{
+      const W = window.innerWidth;
+      const H = window.innerHeight;
+      pals.forEach(p => {{
+        const w = p.el.offsetWidth || 60;
+        const h = p.el.offsetHeight || 60;
+        const maxV = p.hopping ? p.speed * 1.8 : p.speed;
+        p.vx += (Math.random() - 0.5) * 0.08 * p.speed;
+        p.vy += (Math.random() - 0.5) * 0.06 * p.speed;
+        p.vx = Math.max(-maxV, Math.min(maxV, p.vx));
+        p.vy = Math.max(-maxV * 0.6, Math.min(maxV * 0.6, p.vy));
+        p.x += p.vx;
+        p.y += p.vy;
+        if (p.x < 0) {{ p.x = 0; p.vx = Math.abs(p.vx); }}
+        if (p.x > W - w) {{ p.x = W - w; p.vx = -Math.abs(p.vx); }}
+        if (p.y < 0) {{ p.y = 0; p.vy = Math.abs(p.vy); }}
+        if (p.y > H - h) {{ p.y = H - h; p.vy = -Math.abs(p.vy); }}
+        if (p.hopping) {{
+          p.hop += p.hopV;
+          p.hopV += 0.7;
+          if (p.hop >= 0) {{ p.hop = 0; p.hopV = 0; p.hopping = false; }}
+        }}
+        const bob = Math.sin(t / 500 * p.speed + p.phase) * 5;
+        const tilt = Math.sin(t / 350 + p.phase) * 7;
+        p.el.style.transform = "translate(" + p.x.toFixed(1) + "px," + (p.y + bob + p.hop).toFixed(1) + "px)";
+        p.img.style.transform = "scaleX(" + (p.vx < 0 ? -1 : 1) + ") rotate(" + tilt.toFixed(1) + "deg)";
+      }});
+      palsFrame = requestAnimationFrame(stepPals);
+    }}
+
+    function setPals(on) {{
+      palsEl.hidden = !on;
+      palsToggle.textContent = on ? "친구들 숨기기" : "친구들 부르기";
+      try {{ localStorage.setItem("pals", on ? "on" : "off"); }} catch (err) {{}}
+      if (on) {{
+        if (!pals.length) makePals();
+        if (palsFrame === null) palsFrame = requestAnimationFrame(stepPals);
+      }} else if (palsFrame !== null) {{
+        cancelAnimationFrame(palsFrame);
+        palsFrame = null;
+      }}
+    }}
+
+    let palsPref = null;
+    try {{ palsPref = localStorage.getItem("pals"); }} catch (err) {{}}
+    palsToggle.addEventListener("click", () => setPals(palsEl.hidden));
+    setPals(palsPref ? palsPref === "on" : !reduceMotion);
 
     render();
     loadViews();
