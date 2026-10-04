@@ -531,7 +531,7 @@ def render_html(payload: dict) -> str:
     .pal-body {{ transform-origin: 50% 100%; }}
     .pal-body.boing {{ animation: boing 0.5s ease-out; }}
     .pal img {{
-      display: block; height: var(--pal-size, 68px); width: auto;
+      display: block; height: var(--pal-size, 46px); width: auto;
       filter: drop-shadow(0 3px 3px rgba(60, 40, 20, 0.18));
       -webkit-user-drag: none; pointer-events: none;
     }}
@@ -769,7 +769,7 @@ def render_html(payload: dict) -> str:
     let palsFrame = null;
 
     function makePals() {{
-      const size = window.innerWidth < 600 ? 52 : 68;
+      const size = window.innerWidth < 600 ? 36 : 46;
       palsEl.style.setProperty("--pal-size", size + "px");
       PALS.forEach((def, i) => {{
         const el = document.createElement("div");
