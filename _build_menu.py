@@ -533,15 +533,44 @@ def render_html(payload: dict) -> str:
     }}
     .hours-line {{ color: var(--muted); font-size: 12px; margin-bottom: 14px; }}
     .meals {{
-      display: grid; gap: 12px;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      display: grid; gap: 10px;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    }}
+    .cafe-grid {{
+      display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px;
+    }}
+    .cafe-head {{
+      margin: 0; font-size: 13px; color: var(--accent);
+      border-bottom: 1px solid var(--line); padding-bottom: 6px;
+    }}
+    .cafe-cat {{
+      grid-column: 1 / -1; margin: 8px 0 0; font-size: 12px; color: var(--blue); font-weight: 700;
+    }}
+    .cafe-cell {{
+      border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; background: #fff;
+    }}
+    .cafe-cell ul {{ margin: 0; padding: 0 0 0 16px; }}
+    .cafe-cell li {{ font-size: 13.5px; margin: 2px 0; }}
+    .cafe-cell .when {{ font-size: 11px; color: var(--muted); margin-bottom: 4px; }}
+    .cafe-cell .empty {{ padding: 0; }}
+    @media (max-width: 600px) {{
+      .dates {{
+        flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none;
+        margin-left: -20px; margin-right: -20px; padding: 0 20px;
+      }}
+      .dates::-webkit-scrollbar {{ display: none; }}
+      .dates button {{ flex: 0 0 auto; }}
+      section.place {{ padding: 14px 12px 12px; }}
+      .meal {{ padding: 10px 10px 6px; }}
+      .course li, .cafe-cell li {{ font-size: 13px; }}
+      .course ul, .cafe-cell ul {{ padding-left: 14px; }}
     }}
     .meal {{
       border: 1px solid var(--line); border-radius: 12px; padding: 12px 12px 8px;
       background: #fff;
     }}
     .meal h3 {{
-      margin: 0 0 2px; font-size: 13px; letter-spacing: 0.04em;
+      margin: 0 0 2px; font-size: 13px;
       text-transform: none; color: var(--accent);
     }}
     .meal .when {{ font-size: 11px; color: var(--muted); margin-bottom: 8px; }}
@@ -613,8 +642,10 @@ def render_html(payload: dict) -> str:
   <script id="meal-data" type="application/json">{data_json}</script>
   <script>
     const DATA = JSON.parse(document.getElementById("meal-data").textContent);
-    const LOC_ORDER = ["본관 직원식당", "본관 밀카페", "암병원 직원식당", "암병원 밀카페", "일원역캠퍼스 식당"];
-    const MEAL_ORDER = ["아침", "점심", "저녁", "야간", "카페"];
+    const STAFF = ["본관 직원식당", "암병원 직원식당", "일원역캠퍼스 식당"];
+    const CAFES = ["본관 밀카페", "암병원 밀카페"];
+    const MEAL_ORDER = ["아침", "점심", "저녁", "야간"];
+    const CAFE_CATS = ["빵", "샐러드", "랩·샌드위치", "컵밥"];
     const today = new Date();
     const todayIso = [
       today.getFullYear(),
@@ -653,77 +684,119 @@ def render_html(payload: dict) -> str:
         }});
         datesEl.appendChild(b);
       }});
+      const sel = datesEl.querySelector('[aria-selected="true"]');
+      if (sel && datesEl.scrollWidth > datesEl.clientWidth) {{
+        datesEl.scrollLeft = sel.offsetLeft - datesEl.offsetLeft - (datesEl.clientWidth - sel.offsetWidth) / 2;
+      }}
     }}
 
-    function hoursFor(loc, meal) {{
-      const h = DATA.hours[loc];
-      if (!h) return "";
-      return h[meal] || h["운영"] || "";
-    }}
-
-    function renderCourses(courses, loc, mealName) {{
-      const wrap = document.createElement("div");
-      wrap.className = "meal";
-      const h3 = document.createElement("h3");
-      h3.textContent = mealName === "카페" ? "오늘의 메뉴" : mealName;
-      wrap.appendChild(h3);
-      const when = document.createElement("div");
-      when.className = "when";
-      when.textContent = hoursFor(loc, mealName);
-      if (when.textContent) wrap.appendChild(when);
-      const names = Object.keys(courses);
-      names.forEach(name => {{
-        const items = courses[name];
-        if (!items || !items.length) return;
-        const c = document.createElement("div");
-        c.className = "course";
-        if (!(names.length === 1 && (name === "메뉴" || name === "카페"))) {{
-          const h4 = document.createElement("h4");
-          const extra = (DATA.hours[loc] && DATA.hours[loc][name]) ? " · " + DATA.hours[loc][name] : "";
-          h4.textContent = name + extra;
-          c.appendChild(h4);
-        }}
-        const ul = document.createElement("ul");
-        items.forEach(it => {{
-          const li = document.createElement("li");
-          const isTheme = /^<<.+>>$/.test(it) || (/^\\*.+\\*$/.test(it) && it.length < 40);
-          li.textContent = isTheme ? it.replace(/^<<|>>$/g, "").replace(/^\\*|\\*$/g, "") : it;
-          if (isTheme) li.className = "theme";
-          ul.appendChild(li);
-        }});
-        c.appendChild(ul);
-        wrap.appendChild(c);
+    function itemList(items) {{
+      const ul = document.createElement("ul");
+      items.forEach(it => {{
+        const li = document.createElement("li");
+        const isTheme = /^<<.+>>$/.test(it) || (/^\\*.+\\*$/.test(it) && it.length < 40);
+        li.textContent = isTheme ? it.replace(/^<<|>>$/g, "").replace(/^\\*|\\*$/g, "") : it;
+        if (isTheme) li.className = "theme";
+        ul.appendChild(li);
       }});
-      return wrap;
+      return ul;
     }}
 
-    function renderPlace(title, meals) {{
+    function emptyNote(text) {{
+      const el = document.createElement("div");
+      el.className = "empty";
+      el.textContent = text;
+      return el;
+    }}
+
+    function slotSection(id, title, hoursText) {{
       const sec = document.createElement("section");
       sec.className = "place";
-      sec.id = "loc-" + title;
+      sec.id = "slot-" + id;
       const h2 = document.createElement("h2");
       h2.textContent = title;
       sec.appendChild(h2);
-      const hours = DATA.hours[title];
-      if (hours && hours["운영"]) {{
+      if (hoursText) {{
         const p = document.createElement("div");
         p.className = "hours-line";
-        p.textContent = hours["운영"];
+        p.textContent = hoursText;
         sec.appendChild(p);
       }}
+      return sec;
+    }}
+
+    function renderMealSlot(day, meal) {{
+      const sec = slotSection(meal, meal, "");
       const grid = document.createElement("div");
       grid.className = "meals";
-      const keys = MEAL_ORDER.filter(k => meals[k] && Object.keys(meals[k]).length);
-      if (!keys.length) {{
-        const empty = document.createElement("div");
-        empty.className = "empty";
-        empty.textContent = title.includes("밀카페") || title.includes("일원")
-          ? "이 요일에는 운영/식단이 없습니다."
-          : "이 날짜에 등록된 메뉴가 없습니다.";
-        sec.appendChild(empty);
+      STAFF.filter(loc => DATA.hours[loc] && DATA.hours[loc][meal]).forEach(loc => {{
+        const card = document.createElement("div");
+        card.className = "meal";
+        const h3 = document.createElement("h3");
+        h3.textContent = loc;
+        card.appendChild(h3);
+        const when = document.createElement("div");
+        when.className = "when";
+        when.textContent = DATA.hours[loc][meal];
+        card.appendChild(when);
+        const courses = (day.locations[loc] || {{}})[meal] || {{}};
+        const names = Object.keys(courses).filter(n => courses[n] && courses[n].length);
+        if (!names.length) card.appendChild(emptyNote("이 날은 메뉴가 없습니다."));
+        names.forEach(name => {{
+          const c = document.createElement("div");
+          c.className = "course";
+          if (!(names.length === 1 && (name === "메뉴" || name === "안내"))) {{
+            const h4 = document.createElement("h4");
+            h4.textContent = name;
+            c.appendChild(h4);
+          }}
+          c.appendChild(itemList(courses[name]));
+          card.appendChild(c);
+        }});
+        grid.appendChild(card);
+      }});
+      sec.appendChild(grid);
+      return sec;
+    }}
+
+    function renderCafeSlot(day) {{
+      const sec = slotSection("밀카페", "밀카페", DATA.hours[CAFES[0]]["운영"]);
+      const menus = CAFES.map(loc => ((day.locations[loc] || {{}})["카페"]) || {{}});
+      const cats = ["안내", ...CAFE_CATS].filter(cat => menus.some(m => m[cat] && m[cat].length));
+      if (!cats.length) {{
+        sec.appendChild(emptyNote("이 날은 밀카페를 운영하지 않습니다."));
         return sec;
       }}
-      keys.forEach(k => grid.appendChild(renderCourses(meals[k], title, k)));
+      const grid = document.createElement("div");
+      grid.className = "cafe-grid";
+      CAFES.forEach(loc => {{
+        const h3 = document.createElement("h3");
+        h3.className = "cafe-head";
+        h3.textContent = loc;
+        grid.appendChild(h3);
+      }});
+      cats.forEach(cat => {{
+        if (cat !== "안내") {{
+          const label = document.createElement("h4");
+          label.className = "cafe-cat";
+          label.textContent = cat;
+          grid.appendChild(label);
+        }}
+        CAFES.forEach((loc, i) => {{
+          const cell = document.createElement("div");
+          cell.className = "cafe-cell";
+          const hours = cat !== "안내" && DATA.hours[loc][cat];
+          if (hours) {{
+            const when = document.createElement("div");
+            when.className = "when";
+            when.textContent = hours;
+            cell.appendChild(when);
+          }}
+          const items = menus[i][cat];
+          cell.appendChild(items && items.length ? itemList(items) : emptyNote("—"));
+          grid.appendChild(cell);
+        }});
+      }});
       sec.appendChild(grid);
       return sec;
     }}
@@ -736,14 +809,19 @@ def render_html(payload: dict) -> str:
       const locnav = document.getElementById("locnav");
       locnav.innerHTML = "";
 
-      LOC_ORDER.forEach(name => {{
+      [...MEAL_ORDER, "밀카페"].forEach(slot => {{
         const a = document.createElement("a");
-        a.href = "#loc-" + name;
-        a.textContent = name;
+        a.href = "#slot-" + slot;
+        a.textContent = slot;
+        a.addEventListener("click", e => {{
+          const target = document.getElementById("slot-" + slot);
+          if (!target) return;
+          e.preventDefault();
+          const offset = document.querySelector("header").offsetHeight + 8;
+          window.scrollTo({{ top: target.getBoundingClientRect().top + window.scrollY - offset, behavior: "smooth" }});
+        }});
         locnav.appendChild(a);
-
-        const meals = day.locations[name] || {{}};
-        main.appendChild(renderPlace(name, meals));
+        main.appendChild(slot === "밀카페" ? renderCafeSlot(day) : renderMealSlot(day, slot));
       }});
 
       const foot = document.createElement("footer");
