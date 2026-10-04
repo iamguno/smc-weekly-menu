@@ -178,12 +178,6 @@
     .like-btn:hover { color: var(--like); border-color: var(--like); }
     .like-btn.liked { color: var(--like); border-color: var(--like); background: var(--like-bg); font-weight: 700; }
     .like-btn .heart { font-size: 13px; line-height: 1; }
-    .vote-bar { margin-top: 12px; font-size: 12px; color: var(--muted); }
-    .vote-bar .vote-labels { display: flex; justify-content: space-between; margin-bottom: 4px; }
-    .vote-bar .vote-labels strong { color: var(--ink); }
-    .vote-bar .track { display: flex; height: 8px; border-radius: 999px; overflow: hidden; background: var(--line); }
-    .vote-bar .seg-a { background: var(--sel); }
-    .vote-bar .seg-b { background: var(--green); }
     footer { color: var(--muted); font-size: 12px; margin-top: 28px; }
     .toast {
       position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom));
@@ -208,7 +202,7 @@
     }
     @media print {
       header { position: static; background: #fff; }
-      .dates, .loc-nav, .views, .head-actions, .share-btn, .live, .like-row, .vote-bar { display: none; }
+      .dates, .loc-nav, .views, .head-actions, .share-btn, .live, .like-row { display: none; }
       section.place { break-inside: avoid; }
     }
   </style>
@@ -510,16 +504,12 @@
       const sec = slotSection(meal, "");
       const grid = document.createElement("div");
       grid.className = "meals";
-      const locs = STAFF.filter(loc => DATA.hours[loc][meal]);
-      locs.forEach(loc => {
+      STAFF.filter(loc => DATA.hours[loc][meal]).forEach(loc => {
         const courses = (day.locations[loc] || {})[meal] || {};
         const key = hasMenu(day, loc, meal) ? likeKey(day.date, loc, meal) : null;
         grid.appendChild(courseCard(SHORT[loc], DATA.hours[loc][meal], courses, loc, meal, key));
       });
       sec.appendChild(grid);
-      if (locs.length === 2 && locs.every(loc => hasMenu(day, loc, meal))) {
-        sec.appendChild(voteBar(locs.map(loc => [SHORT[loc], likeKey(day.date, loc, meal)])));
-      }
       return sec;
     }
 
@@ -587,9 +577,6 @@
         });
       }
       sec.appendChild(grid);
-      if (open.length === 2) {
-        sec.appendChild(voteBar(CAFES.map(loc => [SHORT[loc], likeKey(day.date, loc, "카페")])));
-      }
       return sec;
     }
 
@@ -832,14 +819,6 @@
       return row;
     }
 
-    function voteBar(pairs) {
-      const el = document.createElement("div");
-      el.className = "vote-bar";
-      el.hidden = true;
-      el.dataset.pairs = JSON.stringify(pairs);
-      return el;
-    }
-
     function paintLikeButton(btn) {
       const key = btn.dataset.likeKey;
       const liked = isLiked(key);
@@ -854,41 +833,8 @@
       btn.appendChild(document.createTextNode(typeof n === "number" && n > 0 ? String(n) : "좋아요"));
     }
 
-    function paintVoteBar(el) {
-      const [[la, ka], [lb, kb]] = JSON.parse(el.dataset.pairs);
-      const a = likeCounts[ka];
-      const b = likeCounts[kb];
-      if (typeof a !== "number" || typeof b !== "number" || a + b === 0) {
-        el.hidden = true;
-        return;
-      }
-      const pa = Math.round((a / (a + b)) * 100);
-      el.hidden = false;
-      el.innerHTML = "";
-      const labels = document.createElement("div");
-      labels.className = "vote-labels";
-      const left = document.createElement("span");
-      left.innerHTML = "<strong></strong> " + pa + "%";
-      left.querySelector("strong").textContent = la;
-      const right = document.createElement("span");
-      right.innerHTML = (100 - pa) + "% <strong></strong>";
-      right.querySelector("strong").textContent = lb;
-      labels.append(left, right);
-      const track = document.createElement("div");
-      track.className = "track";
-      const segA = document.createElement("div");
-      segA.className = "seg-a";
-      segA.style.width = pa + "%";
-      const segB = document.createElement("div");
-      segB.className = "seg-b";
-      segB.style.width = (100 - pa) + "%";
-      track.append(segA, segB);
-      el.append(labels, track);
-    }
-
-    function paintLikes(root) {
-      (root || document).querySelectorAll(".like-btn").forEach(paintLikeButton);
-      (root || document).querySelectorAll(".vote-bar").forEach(paintVoteBar);
+    function paintLikes() {
+      document.querySelectorAll(".like-btn").forEach(paintLikeButton);
     }
 
     async function loadLikes(sec) {
