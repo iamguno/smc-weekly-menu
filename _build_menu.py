@@ -579,7 +579,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       border-bottom: 1px solid transparent;
     }
     .loc-nav a:hover { color: var(--ink); border-color: var(--ink); }
-    .loc-nav a.is-live { color: var(--open); font-weight: 700; }
     section.place {
       background: var(--paper); border: 1px solid var(--line);
       border-radius: 16px; padding: 20px 20px 16px; margin: 16px 0 0;
@@ -802,7 +801,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
     function refreshLive() {
       document.querySelectorAll(".live").forEach(el => el.remove());
-      document.querySelectorAll("#locnav a").forEach(a => a.classList.remove("is-live"));
       if (selected !== todayIso && selected !== yesterdayIso) return;
       const day = dayOf(selected);
       const t = Date.now();
@@ -812,8 +810,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         if (!head) return;
         if (st.open.has(slot)) {
           head.after(liveBadge("운영 중", "open"));
-          const a = document.querySelector('#locnav a[data-slot="' + slot + '"]');
-          if (a) a.classList.add("is-live");
         } else if (st.next === slot) {
           head.after(liveBadge("다음 식사", "next"));
         }
