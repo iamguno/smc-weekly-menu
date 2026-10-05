@@ -512,8 +512,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       --open-bg: #dcefe1;
       --next: #1d5fa8;
       --next-bg: #dcebfb;
-      --like: #e11d48;
-      --like-bg: #fde8ee;
       color-scheme: light;
     }
     :root[data-theme="dark"] {
@@ -534,8 +532,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       --open-bg: #1a2e22;
       --next: #9cc6ff;
       --next-bg: #1a2638;
-      --like: #fb7193;
-      --like-bg: #33161f;
       color-scheme: dark;
     }
     * { box-sizing: border-box; }
@@ -606,9 +602,8 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     }
     .meal {
       border: 1px solid var(--line); border-radius: 12px; padding: 12px 12px 8px;
-      background: var(--card); display: flex; flex-direction: column;
+      background: var(--card);
     }
-    .meal .like-row { margin-top: auto; }
     .meal h3 { margin: 0 0 2px; font-size: 13px; color: var(--accent); }
     .meal .when { font-size: 11px; color: var(--muted); margin-bottom: 8px; }
     .course { margin-bottom: 10px; }
@@ -635,20 +630,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     .cafe-cell .when { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
     .cafe-cell .empty { padding: 0; }
     .empty { color: var(--muted); font-size: 13px; padding: 8px 0; }
-    .like-row {
-      display: flex; justify-content: flex-end;
-      border-top: 1px dashed var(--line); padding-top: 8px; margin: 2px 0 4px;
-    }
-    .cafe-like { border-top: 0; padding-top: 2px; }
-    .section-like { border-top: 0; padding-top: 0; margin-top: 10px; }
-    .like-btn {
-      appearance: none; display: inline-flex; align-items: center; gap: 4px;
-      border: 1px solid var(--line); background: transparent; color: var(--muted);
-      border-radius: 999px; padding: 3px 10px; font: inherit; font-size: 12px; cursor: pointer;
-    }
-    .like-btn:hover { color: var(--like); border-color: var(--like); }
-    .like-btn.liked { color: var(--like); border-color: var(--like); background: var(--like-bg); font-weight: 700; }
-    .like-btn .heart { font-size: 13px; line-height: 1; }
     footer { color: var(--muted); font-size: 12px; margin-top: 28px; }
     .toast {
       position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom));
@@ -673,7 +654,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     }
     @media print {
       header { position: static; background: #fff; }
-      .dates, .loc-nav, .views, .head-actions, .share-btn, .live, .like-row { display: none; }
+      .dates, .loc-nav, .views, .head-actions, .share-btn, .live { display: none; }
       section.place { break-inside: avoid; }
     }
   </style>
@@ -709,12 +690,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     const MEAL_ORDER = ["아침", "점심", "저녁", "야간"];
     const CAFE_CATS = ["빵", "샐러드", "랩·샌드위치", "컵밥"];
     const SLOTS = [...MEAL_ORDER, "밀카페", "일원역캠퍼스"];
-    const LOC_ID = {
-      "본관 직원식당": "bg", "암병원 직원식당": "am",
-      "본관 밀카페": "bc", "암병원 밀카페": "ac", "일원역캠퍼스 식당": "iw",
-    };
-    const MEAL_ID = { "아침": "b", "점심": "l", "저녁": "d", "야간": "n", "카페": "c", "하루": "all" };
-    const ON_SITE = location.hostname === "iamguno.github.io";
     const TAGS = [
       [/\[인기메뉴\]/, "인기", "hot"],
       [/\[앵콜메뉴\]/, "앵콜", "encore"],
@@ -939,7 +914,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       return sec;
     }
 
-    function courseCard(title, hours, courses, loc, meal, key) {
+    function courseCard(title, hours, courses, loc, meal) {
       const card = document.createElement("div");
       card.className = "meal";
       if (loc) {
@@ -966,7 +941,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         c.appendChild(itemList(courses[name]));
         card.appendChild(c);
       });
-      if (key && names.length) card.appendChild(likeRow(key, "like-row"));
       return card;
     }
 
@@ -976,8 +950,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       grid.className = "meals";
       STAFF.filter(loc => DATA.hours[loc][meal]).forEach(loc => {
         const courses = (day.locations[loc] || {})[meal] || {};
-        const key = hasMenu(day, loc, meal) ? likeKey(day.date, loc, meal) : null;
-        grid.appendChild(courseCard(SHORT[loc], DATA.hours[loc][meal], courses, loc, meal, key));
+        grid.appendChild(courseCard(SHORT[loc], DATA.hours[loc][meal], courses, loc, meal));
       });
       sec.appendChild(grid);
       return sec;
@@ -992,14 +965,10 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       }
       const grid = document.createElement("div");
       grid.className = "meals";
-      const mealNames = Object.keys(DATA.hours[ILWON]);
-      mealNames.forEach(meal => {
+      Object.keys(DATA.hours[ILWON]).forEach(meal => {
         grid.appendChild(courseCard(meal, DATA.hours[ILWON][meal], meals[meal] || {}, ILWON, meal));
       });
       sec.appendChild(grid);
-      if (mealNames.some(meal => hasMenu(day, ILWON, meal))) {
-        sec.appendChild(likeRow(likeKey(day.date, ILWON, "하루"), "like-row section-like"));
-      }
       return sec;
     }
 
@@ -1041,14 +1010,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
           grid.appendChild(cell);
         });
       });
-      const open = CAFES.filter(loc => hasMenu(day, loc, "카페"));
-      if (open.length) {
-        CAFES.forEach(loc => {
-          grid.appendChild(open.includes(loc)
-            ? likeRow(likeKey(day.date, loc, "카페"), "like-row cafe-like")
-            : document.createElement("div"));
-        });
-      }
       sec.appendChild(grid);
       return sec;
     }
@@ -1089,7 +1050,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       foot.textContent = DATA.cafeNote + " 메뉴·원산지는 당일 사정에 따라 바뀔 수 있습니다.";
       main.appendChild(foot);
       refreshLive();
-      watchLikes();
     }
 
     // ---- 공유 ----
@@ -1254,103 +1214,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       } catch (err) {
         viewsEl.hidden = true;
       }
-    }
-
-    // ---- 좋아요 ----
-    // Abacus allows ~30 requests per 10s per IP (shared on hospital Wi-Fi), so counts load per visible section.
-    const likeCounts = {};
-    const likeLoading = new Set();
-    let likeObserver = null;
-
-    function likeKey(date, loc, meal) {
-      return (ON_SITE ? "" : "dev-") + "like-" + date + "-" + LOC_ID[loc] + "-" + MEAL_ID[meal];
-    }
-
-    function isLiked(key) {
-      try { return localStorage.getItem("liked:" + key) === "1"; } catch (err) { return false; }
-    }
-
-    function likeRow(key, cls) {
-      const row = document.createElement("div");
-      row.className = cls;
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "like-btn";
-      btn.dataset.likeKey = key;
-      btn.addEventListener("click", () => toggleLike(key));
-      row.appendChild(btn);
-      paintLikeButton(btn);
-      return row;
-    }
-
-    function paintLikeButton(btn) {
-      const key = btn.dataset.likeKey;
-      const liked = isLiked(key);
-      const n = likeCounts[key];
-      btn.classList.toggle("liked", liked);
-      btn.setAttribute("aria-pressed", liked ? "true" : "false");
-      btn.innerHTML = "";
-      const heart = document.createElement("span");
-      heart.className = "heart";
-      heart.textContent = liked ? "♥" : "♡";
-      btn.appendChild(heart);
-      btn.appendChild(document.createTextNode(typeof n === "number" && n > 0 ? String(n) : "좋아요"));
-    }
-
-    function paintLikes() {
-      document.querySelectorAll(".like-btn").forEach(paintLikeButton);
-    }
-
-    async function loadLikes(sec) {
-      const keys = [...sec.querySelectorAll(".like-btn")]
-        .map(b => b.dataset.likeKey)
-        .filter(k => !(k in likeCounts) && !likeLoading.has(k));
-      if (!keys.length) return;
-      keys.forEach(k => likeLoading.add(k));
-      try {
-        for (const k of keys) likeCounts[k] = await countGet(k);
-      } catch (err) {
-      } finally {
-        keys.forEach(k => likeLoading.delete(k));
-      }
-      paintLikes();
-    }
-
-    function watchLikes() {
-      if (likeObserver) likeObserver.disconnect();
-      const secs = [...document.querySelectorAll("section.place")].filter(s => s.querySelector(".like-btn"));
-      if (!("IntersectionObserver" in window)) {
-        secs.forEach(loadLikes);
-        return;
-      }
-      likeObserver = new IntersectionObserver(entries => {
-        entries.forEach(e => {
-          if (!e.isIntersecting) return;
-          likeObserver.unobserve(e.target);
-          loadLikes(e.target);
-        });
-      }, { rootMargin: "100px 0px" });
-      secs.forEach(s => likeObserver.observe(s));
-    }
-
-    async function toggleLike(key) {
-      if (isLiked(key)) {
-        toast("이미 좋아요를 눌렀어요.");
-        return;
-      }
-      const before = likeCounts[key];
-      try { localStorage.setItem("liked:" + key, "1"); } catch (err) {}
-      likeCounts[key] = (typeof before === "number" ? before : 0) + 1;
-      paintLikes();
-      try {
-        likeCounts[key] = await countHit(key);
-      } catch (err) {
-        try { localStorage.removeItem("liked:" + key); } catch (e) {}
-        if (typeof before === "number") likeCounts[key] = before;
-        else delete likeCounts[key];
-        toast("잠시 후 다시 눌러 주세요.");
-      }
-      paintLikes();
     }
 
     const [focusDate, focusSlot] = initialFocus();
