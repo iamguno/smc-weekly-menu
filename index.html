@@ -235,6 +235,8 @@
       font: inherit; font-size: 14.5px; padding: 10px 20px 10px 2px; width: 100%; min-width: 0;
       background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%);
       background-position: right 8px center, right 3px center; background-size: 5px 5px; background-repeat: no-repeat; }
+    /* 펼친 목록은 OS가 그리므로 바탕·글자색을 직접 지정 (다크 모드에서 흰 바탕에 흰 글자 방지) */
+    .field select option { background: var(--card); color: var(--ink); }
     .ymd { display: grid; grid-template-columns: 1.3fr 1fr 1fr; gap: 6px; flex: 1; }
     .go { appearance: none; border: 0; width: 100%; margin: 14px 0 6px; padding: 13px; border-radius: 10px;
       background: var(--sel); color: var(--on-sel); font: inherit; font-size: 15px; font-weight: 800; cursor: pointer; }
@@ -1468,8 +1470,10 @@ if (typeof module !== "undefined") module.exports = SAJU;
         btns.forEach((x, j) => x.classList.toggle("picked", j === mineIdx));
         let counts = null;
         try {
-          counts = await Promise.all(["a", "b"].map((s, j) =>
-            fresh && onSite && j === mineIdx ? countHit(countKey(q, s)) : countGet(countKey(q, s))));
+          // 집계 서버가 늦으면 8초 뒤 포기하고 안내한다.
+          const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 8000));
+          counts = await Promise.race([timeout, Promise.all(["a", "b"].map((s, j) =>
+            fresh && onSite && j === mineIdx ? countHit(countKey(q, s)) : countGet(countKey(q, s))))]);
           // 사이트 밖(미리보기)에서는 집계를 늘리지 않으니 내 표만 더해서 보여 준다.
           if (!onSite) counts[mineIdx] += 1;
           counts[mineIdx] = Math.max(counts[mineIdx], 1);
