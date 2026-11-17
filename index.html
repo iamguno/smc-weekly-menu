@@ -994,11 +994,11 @@
     async function loadViews() {
       const onSite = location.hostname === "iamguno.github.io";
       try {
-        for (const d of DATA.days) {
-          viewsByDay[d.date] = d.date === todayIso && onSite
-            ? await countHit("menu-" + d.date)
-            : await countGet("menu-" + d.date);
-        }
+        // 날짜별 요청을 한꺼번에 보내서 가장 느린 하나만큼만 기다린다.
+        const counts = await Promise.all(DATA.days.map(d => d.date === todayIso && onSite
+          ? countHit("menu-" + d.date)
+          : countGet("menu-" + d.date)));
+        DATA.days.forEach((d, i) => { viewsByDay[d.date] = counts[i]; });
         const todayCount = viewsByDay[todayIso] || 0;
         const weekDays = DATA.days.filter((d, i) => !(i === 0 && new Date(d.date + "T00:00:00").getDay() === 0));
         const weekCount = weekDays.reduce((s, day) => s + (viewsByDay[day.date] || 0), 0);
@@ -1212,12 +1212,9 @@ if (typeof module !== "undefined") module.exports = SAJU;
       try {
         const isos = [];
         for (let d = new Date(B.from + "T00:00:00"); isoOf(d) <= todayIso; d.setDate(d.getDate() + 1)) isos.push(isoOf(d));
-        let week = 0, today = 0;
-        for (const iso of isos) {
-          const n = iso === todayIso && onSite ? await countHit("menu-" + iso) : await countGet("menu-" + iso);
-          week += n;
-          if (iso === todayIso) today = n;
-        }
+        const counts = await Promise.all(isos.map(iso =>
+          iso === todayIso && onSite ? countHit("menu-" + iso) : countGet("menu-" + iso)));
+        const week = counts.reduce((x, y) => x + y, 0), today = counts[isos.indexOf(todayIso)] || 0;
         viewsEl.hidden = false;
         viewsEl.innerHTML = "조회수 · 오늘 <strong>" + today + "</strong>회 · 이번 주 <strong>" + week + "</strong>회";
       } catch (err) {
@@ -1474,14 +1471,11 @@ if (typeof module !== "undefined") module.exports = SAJU;
         btns.forEach((x, j) => x.classList.toggle("picked", j === mineIdx));
         let counts = null;
         try {
-          const work = (async () => {
-            if (fresh && onSite) {
-              await countHit(countKey(q, side));
-              if (prev) await countHit(countKey(q, prev) + "-x");
-            }
-            const net = async s => Math.max(0, (await countGet(countKey(q, s))) - (await countGet(countKey(q, s) + "-x")));
-            return Promise.all([net("a"), net("b")]);
-          })();
+          // 네 숫자(a, a-x, b, b-x)를 한꺼번에 요청한다. 새로 고른 쪽과 바꿔 나간 쪽은 올리면서 읽는다.
+          const keys = [countKey(q, "a"), countKey(q, "a") + "-x", countKey(q, "b"), countKey(q, "b") + "-x"];
+          const toHit = fresh && onSite ? [countKey(q, side), prev ? countKey(q, prev) + "-x" : null] : [];
+          const work = Promise.all(keys.map(k => toHit.includes(k) ? countHit(k) : countGet(k)))
+            .then(([a, ax, b, bx]) => [Math.max(0, a - ax), Math.max(0, b - bx)]);
           // 집계 서버가 늦으면 8초 뒤 포기하고 안내한다.
           const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 8000));
           counts = await Promise.race([timeout, work]);
