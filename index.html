@@ -313,7 +313,7 @@
     .pick.picked::before { content: "내 선택"; position: absolute; top: 8px; left: 8px; font-size: 10px; font-weight: 700;
       color: var(--card); border-radius: 999px; padding: 2px 6px; }
     .pick.a.picked::before { background: var(--a); } .pick.b.picked::before { background: var(--b); }
-    .vs.done .pick { cursor: default; }
+    .vs.done .pick.picked { cursor: default; }
     .bal-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; font-size: 12px; color: var(--muted); }
 
     /* ---- 운영 시간 ---- */
@@ -373,7 +373,7 @@
 
     <section class="place" id="bw-balance">
       <div class="slot-head"><h2>⚖️ 밸런스 게임</h2><button class="pill-btn share-btn" type="button" id="bw-bal-share">공유</button></div>
-      <div class="desc">하루에 한 질문! 둘 중 하나만 고를 수 있다면? 고르면 다른 사람들의 선택이 보여요.</div>
+      <div class="desc">하루에 한 질문! 둘 중 하나만 고를 수 있다면?</div>
       <div id="bw-bal"></div>
     </section>
 
@@ -1446,23 +1446,27 @@ if (typeof module !== "undefined") module.exports = SAJU;
       const countKey = (i, side) => "bal-" + B.from + "-" + i + "-" + side;
       const dayIdx = Math.round((new Date(todayIso + "T00:00:00") - new Date(B.from + "T00:00:00")) / 864e5);
       const bi = Math.max(0, dayIdx) % BAL.length;
-      let lastShare = "";
+      // 집계: 선택지마다 고른 수(...-a)와 바꿔 나간 수(...-a-x)를 따로 올리고, 둘의 차를 보여 준다.
+      // 집계 서버는 숫자를 올리기만 하므로 이렇게 해야 선택을 바꿔도 한 사람이 한 번만 세어진다.
+      let lastShare = "", busy = false;
 
-      function render() {
+      function render(fresh, prev) {
         const mine = bwStore.get(voteKey(bi));
         box.innerHTML = `<div class="bal-step">오늘의 질문 · ${bi + 1}일째</div><div class="vs">` +
           ["a", "b"].map((side, j) => `<button type="button" class="pick ${side}" data-side="${side}"><span class="fill"></span><span class="em">${BAL[bi][j][0]}</span><span>${BAL[bi][j][1]}</span></button>`).join("") +
           `</div><div class="bal-foot"><span id="bw-bal-total"></span></div>`;
         box.querySelectorAll(".pick").forEach(b => b.addEventListener("click", () => {
-          if (bwStore.get(voteKey(bi)) || box.querySelector(".vs").classList.contains("done")) return;
-          bwStore.set(voteKey(bi), b.dataset.side);
-          show(b.dataset.side, true);
+          const before = bwStore.get(voteKey(bi)), side = b.dataset.side;
+          if (busy || before === side) return;
+          bwStore.set(voteKey(bi), side);
+          render(true, before);
         }));
         lastShare = "";
-        if (mine) show(mine, false);
+        if (mine) show(mine, !!fresh, prev);
       }
-      async function show(side, fresh) {
+      async function show(side, fresh, prev) {
         const q = bi, mineIdx = side === "a" ? 0 : 1;
+        busy = true;
         box.querySelector(".vs").classList.add("done");
         const total = $("bw-bal-total");
         total.textContent = "집계 중…";
@@ -1470,17 +1474,25 @@ if (typeof module !== "undefined") module.exports = SAJU;
         btns.forEach((x, j) => x.classList.toggle("picked", j === mineIdx));
         let counts = null;
         try {
+          const work = (async () => {
+            if (fresh && onSite) {
+              await countHit(countKey(q, side));
+              if (prev) await countHit(countKey(q, prev) + "-x");
+            }
+            const net = async s => Math.max(0, (await countGet(countKey(q, s))) - (await countGet(countKey(q, s) + "-x")));
+            return Promise.all([net("a"), net("b")]);
+          })();
           // 집계 서버가 늦으면 8초 뒤 포기하고 안내한다.
           const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 8000));
-          counts = await Promise.race([timeout, Promise.all(["a", "b"].map((s, j) =>
-            fresh && onSite && j === mineIdx ? countHit(countKey(q, s)) : countGet(countKey(q, s))))]);
+          counts = await Promise.race([timeout, work]);
           // 사이트 밖(미리보기)에서는 집계를 늘리지 않으니 내 표만 더해서 보여 준다.
           if (!onSite) counts[mineIdx] += 1;
           counts[mineIdx] = Math.max(counts[mineIdx], 1);
         } catch (err) {
           counts = null;
         }
-        if (q !== bi) return;
+        busy = false;
+        if (q !== bi || bwStore.get(voteKey(q)) !== side) return;
         const pickText = BAL[q][mineIdx][1];
         if (!counts) {
           total.textContent = "집계를 불러오지 못했어요.";
