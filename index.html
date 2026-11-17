@@ -219,6 +219,8 @@
       --e0: #7fd39a; --e1: #ff8a80; --e2: #f0c75e; --e3: #c3c9d1; --e4: #8fb3ea;
       --e0b: #16281c; --e1b: #2e1a18; --e2b: #2a2412; --e3b: #222428; --e4b: #17223a;
     }
+    /* PC에서도 휴대폰처럼 가운데 한 줄로 */
+    body.bw .wrap { max-width: 800px; }
     @keyframes bw-rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
     .desc { color: var(--muted); font-size: 13px; margin: 2px 0 14px; }
     .ghost { appearance: none; border: 0; background: none; color: var(--muted); font-size: 12.5px;
@@ -1171,6 +1173,7 @@ if (typeof module !== "undefined") module.exports = SAJU;
     function startBreakWeek() {
       const B = DATA.breakWeek, $ = id => document.getElementById(id);
       weekline.textContent = B.week + " · " + B.range;
+      document.body.classList.add("bw");
       datesEl.style.display = "none";
       const main = $("main");
       main.innerHTML = "";
