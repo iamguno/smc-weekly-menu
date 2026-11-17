@@ -1447,7 +1447,7 @@ if (typeof module !== "undefined") module.exports = SAJU;
         const mine = bwStore.get(voteKey(bi));
         box.innerHTML = `<div class="bal-step">오늘의 질문 · ${bi + 1}일째</div><div class="vs">` +
           ["a", "b"].map((side, j) => `<button type="button" class="pick ${side}" data-side="${side}"><span class="fill"></span><span class="em">${BAL[bi][j][0]}</span><span>${BAL[bi][j][1]}</span></button>`).join("") +
-          `</div><div class="bal-foot"><span id="bw-bal-total"></span><span id="bw-bal-next" hidden>${todayIso >= B.until ? "오늘이 마지막 질문이에요" : "내일 새 질문이 열려요"}</span></div>`;
+          `</div><div class="bal-foot"><span id="bw-bal-total"></span></div>`;
         box.querySelectorAll(".pick").forEach(b => b.addEventListener("click", () => {
           if (bwStore.get(voteKey(bi)) || box.querySelector(".vs").classList.contains("done")) return;
           bwStore.set(voteKey(bi), b.dataset.side);
@@ -1461,7 +1461,6 @@ if (typeof module !== "undefined") module.exports = SAJU;
         box.querySelector(".vs").classList.add("done");
         const total = $("bw-bal-total");
         total.textContent = "집계 중…";
-        $("bw-bal-next").hidden = false;
         const btns = box.querySelectorAll(".pick");
         btns.forEach((x, j) => x.classList.toggle("picked", j === mineIdx));
         let counts = null;
