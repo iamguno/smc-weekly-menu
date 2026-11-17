@@ -368,7 +368,7 @@
 
     <section class="place" id="bw-balance">
       <div class="slot-head"><h2>⚖️ 밸런스 게임</h2><button class="pill-btn share-btn" type="button" id="bw-bal-share">공유</button></div>
-      <div class="desc">둘 중 하나만 고를 수 있다면? 고르면 다른 사람들의 선택이 보여요.</div>
+      <div class="desc">하루에 한 질문! 둘 중 하나만 고를 수 있다면? 고르면 다른 사람들의 선택이 보여요.</div>
       <div id="bw-bal"></div>
     </section>
 
@@ -1426,31 +1426,33 @@ if (typeof module !== "undefined") module.exports = SAJU;
     }
 
     function bwBalance($, B) {
+      // 하루에 한 질문 — BREAK_WEEK 첫날부터 순서대로
       const BAL = [
         [["🌅", "평생 아침형 인간"], ["🌙", "평생 저녁형 인간"]],
         [["🌴", "월급 그대로 주 4일 근무"], ["💰", "월급 1.5배 주 5일 근무"]],
         [["🛗", "엘리베이터가 늘 바로 온다"], ["🚦", "신호등이 늘 초록불이다"]],
         [["🍜", "평생 짜장면만"], ["🌶️", "평생 짬뽕만"]],
+        [["🏥", "점심은 평생 본관 직원식당"], ["🎗️", "점심은 평생 암병원 직원식당"]],
+        [["🥢", "탕수육은 부먹"], ["🥄", "탕수육은 찍먹"]],
         [["❄️", "한여름에 히터 없는 방"], ["🔥", "한겨울에 에어컨만 있는 방"]],
       ];
       const box = $("bw-bal"), onSite = location.hostname === "iamguno.github.io";
       const voteKey = i => "bw-bal-" + B.from + "-" + i;
       const countKey = (i, side) => "bal-" + B.from + "-" + i + "-" + side;
-      let bi = BAL.findIndex((_, i) => !bwStore.get(voteKey(i)));
-      if (bi < 0) bi = 0;
+      const dayIdx = Math.round((new Date(todayIso + "T00:00:00") - new Date(B.from + "T00:00:00")) / 864e5);
+      const bi = Math.max(0, dayIdx) % BAL.length;
       let lastShare = "";
 
       function render() {
         const mine = bwStore.get(voteKey(bi));
-        box.innerHTML = `<div class="bal-step">Q${bi + 1} / ${BAL.length}</div><div class="vs">` +
+        box.innerHTML = `<div class="bal-step">오늘의 질문 · ${bi + 1}일째</div><div class="vs">` +
           ["a", "b"].map((side, j) => `<button type="button" class="pick ${side}" data-side="${side}"><span class="fill"></span><span class="em">${BAL[bi][j][0]}</span><span>${BAL[bi][j][1]}</span></button>`).join("") +
-          `</div><div class="bal-foot"><span id="bw-bal-total"></span><button class="ghost" type="button" id="bw-bal-next" hidden>다음 질문 →</button></div>`;
+          `</div><div class="bal-foot"><span id="bw-bal-total"></span><span id="bw-bal-next" hidden>${todayIso >= B.until ? "오늘이 마지막 질문이에요" : "내일 새 질문이 열려요"}</span></div>`;
         box.querySelectorAll(".pick").forEach(b => b.addEventListener("click", () => {
           if (bwStore.get(voteKey(bi)) || box.querySelector(".vs").classList.contains("done")) return;
           bwStore.set(voteKey(bi), b.dataset.side);
           show(b.dataset.side, true);
         }));
-        $("bw-bal-next").addEventListener("click", () => { bi = (bi + 1) % BAL.length; render(); });
         lastShare = "";
         if (mine) show(mine, false);
       }
