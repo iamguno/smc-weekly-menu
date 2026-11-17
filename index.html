@@ -974,27 +974,35 @@
     }
 
     // ---- 조회수 ----
-    // 집계 서버가 응답하지 않으면 30초 뒤 포기한다 (그 뒤엔 조회수 줄을 숨김).
+    // 집계 서버(abacus)가 느리거나 오류를 섞어 낼 때가 있어 한 번 시도에 20초까지 기다리고,
+    // 실패하면 한 번 더 시도한다.
     function countFetch(url) {
       const ctrl = new AbortController();
       let timer;
       const timeout = new Promise((_, reject) => {
-        timer = setTimeout(() => { ctrl.abort(); reject(new Error("count timeout")); }, 30000);
+        timer = setTimeout(() => { ctrl.abort(); reject(new Error("count timeout")); }, 20000);
       });
       return Promise.race([fetch(url, { signal: ctrl.signal }), timeout]).finally(() => clearTimeout(timer));
     }
 
-    async function countGet(key) {
+    async function countGetOnce(key) {
       const res = await countFetch(COUNT_BASE + "/get/" + COUNT_NS + "/" + encodeURIComponent(key));
       if (res.status === 404) return 0;
-      if (!res.ok) throw new Error("count get");
+      if (!res.ok) throw new Error("count get " + res.status);
       const data = await res.json();
       return Number(data.value) || 0;
     }
 
+    async function countGet(key) {
+      try { return await countGetOnce(key); } catch (err) { return countGetOnce(key); }
+    }
+
     async function countHit(key) {
-      const res = await countFetch(COUNT_BASE + "/hit/" + COUNT_NS + "/" + encodeURIComponent(key));
-      if (!res.ok) throw new Error("count hit");
+      const url = COUNT_BASE + "/hit/" + COUNT_NS + "/" + encodeURIComponent(key);
+      let res = await countFetch(url);
+      // 서버 오류(5xx)면 올리지 못한 것이니 한 번 더. 시간 초과는 올라갔을 수도 있어 다시 올리지 않는다.
+      if (res.status >= 500) res = await countFetch(url);
+      if (!res.ok) throw new Error("count hit " + res.status);
       const data = await res.json();
       return Number(data.value) || 0;
     }
@@ -1015,17 +1023,21 @@
       };
       const cached = todayIso in cache && weekIsos.every(iso => iso in cache);
       if (cached) paint(cache);
-      try {
-        // 날짜별 요청을 한꺼번에 보내서 가장 느린 하나만큼만 기다린다.
-        const counts = await Promise.all(fetchIsos.map(iso => iso === todayIso && onSite
-          ? countHit("menu-" + iso)
-          : countGet("menu-" + iso)));
-        const fresh = {};
-        fetchIsos.forEach((iso, i) => { fresh[iso] = counts[i]; viewsByDay[iso] = counts[i]; });
-        paint(fresh);
-        try { localStorage.setItem("views-cache", JSON.stringify({ date: todayIso, counts: fresh })); } catch (err) {}
-      } catch (err) {
-        if (!cached) viewsEl.hidden = true;
+      // 날짜별 요청을 한꺼번에 보내서 가장 느린 하나만큼만 기다린다.
+      // 오늘 조회수 올리기가 끝내 실패하면 오늘 숫자만 읽어 온다.
+      const results = await Promise.allSettled(fetchIsos.map(iso => iso === todayIso && onSite
+        ? countHit("menu-" + iso).catch(() => countGet("menu-" + iso))
+        : countGet("menu-" + iso)));
+      // 받아 온 날짜만 새 숫자로 바꾸고, 못 받은 날짜는 같은 날 받아 둔 숫자를 쓴다.
+      const merged = { ...cache };
+      results.forEach((r, i) => {
+        if (r.status === "fulfilled") { merged[fetchIsos[i]] = r.value; viewsByDay[fetchIsos[i]] = r.value; }
+      });
+      if (todayIso in merged) {
+        paint(merged);
+        try { localStorage.setItem("views-cache", JSON.stringify({ date: todayIso, counts: merged })); } catch (err) {}
+      } else if (!cached) {
+        viewsEl.hidden = true;
       }
     }
 
@@ -1492,8 +1504,8 @@ if (typeof module !== "undefined") module.exports = SAJU;
           const toHit = fresh && onSite ? [countKey(q, side), prev ? countKey(q, prev) + "-x" : null] : [];
           const work = Promise.all(keys.map(k => toHit.includes(k) ? countHit(k) : countGet(k)))
             .then(([a, ax, b, bx]) => [Math.max(0, a - ax), Math.max(0, b - bx)]);
-          // 집계 서버가 늦으면 30초 뒤 포기하고 안내한다.
-          const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 30000));
+          // 집계 서버가 늦으면 45초 뒤 포기하고 안내한다 (요청마다 한 번씩 다시 시도하므로).
+          const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 45000));
           counts = await Promise.race([timeout, work]);
           // 사이트 밖(미리보기)에서는 집계를 늘리지 않으니 내 표만 더해서 보여 준다.
           if (!onSite) counts[mineIdx] += 1;
