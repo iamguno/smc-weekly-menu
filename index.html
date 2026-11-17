@@ -421,7 +421,6 @@
 
     const datesEl = document.getElementById("dates");
     const viewsEl = document.getElementById("views");
-    const viewsByDay = {};
     const COUNT_NS = "iamguno.github.io";
     const COUNT_BASE = "https://abacus.jsn.cam";
     let selected = DATA.days.some(d => d.date === todayIso) ? todayIso : DATA.days[0].date;
@@ -1007,43 +1006,62 @@
       return Number(data.value) || 0;
     }
 
-    // 조회수: 이 휴대폰에서 같은 날 마지막으로 받은 숫자를 먼저 보여 주고, 서버가 답하면 새 숫자로 바꾼다.
-    // (집계 서버가 느릴 때도 다시 들어온 사람에게는 바로 숫자가 보이게)
-    async function showViews(fetchIsos, weekIsos) {
+    // 조회수 — 집계 서버가 요청이 몰리면 크게 느려지므로 요청 수를 최소로 줄인다.
+    //  - 아직 오지 않은 날은 0이므로 묻지 않는다.
+    //  - 지난 날의 숫자는 더 바뀌지 않으므로 한 번 받으면 이 휴대폰에 저장해 두고 다시 묻지 않는다.
+    //  - 같은 날 받아 둔 오늘 숫자를 먼저 보여 주고, 서버가 답하면 새 숫자로 바꾼다.
+    function viewsStore(key) {
+      try { return JSON.parse(localStorage.getItem(key)) || {}; } catch (err) { return {}; }
+    }
+    function viewsSave(key, value) {
+      try { localStorage.setItem(key, JSON.stringify(value)); } catch (err) {}
+    }
+    async function showViews(weekIsos) {
       const onSite = location.hostname === "iamguno.github.io";
-      let cache = {};
-      try {
-        const saved = JSON.parse(localStorage.getItem("views-cache"));
-        if (saved && saved.date === todayIso) cache = saved.counts || {};
-      } catch (err) {}
-      const paint = c => {
-        const week = weekIsos.reduce((sum, iso) => sum + (c[iso] || 0), 0);
+      const final = viewsStore("views-final");
+      const today = viewsStore("views-today");
+      const counts = {};
+      weekIsos.forEach(iso => {
+        if (iso > todayIso) counts[iso] = 0;
+        else if (iso < todayIso && iso in final) counts[iso] = final[iso];
+      });
+      const paint = () => {
+        const week = weekIsos.reduce((sum, iso) => sum + (counts[iso] || 0), 0);
         viewsEl.hidden = false;
-        viewsEl.innerHTML = "조회수 · 오늘 <strong>" + (c[todayIso] || 0) + "</strong>회 · 이번 주 <strong>" + week + "</strong>회";
+        viewsEl.innerHTML = "조회수 · 오늘 <strong>" + (counts[todayIso] || 0) + "</strong>회 · 이번 주 <strong>" + week + "</strong>회";
       };
-      const cached = todayIso in cache && weekIsos.every(iso => iso in cache);
-      if (cached) paint(cache);
-      // 날짜별 요청을 한꺼번에 보내서 가장 느린 하나만큼만 기다린다.
+      const need = weekIsos.filter(iso => iso === todayIso || (iso < todayIso && !(iso in final)));
+      if (!need.includes(todayIso)) need.push(todayIso);
+      let shown = false;
+      if (today.date === todayIso && need.length === 1) {
+        counts[todayIso] = today.n;
+        paint();
+        shown = true;
+      }
       // 오늘 조회수 올리기가 끝내 실패하면 오늘 숫자만 읽어 온다.
-      const results = await Promise.allSettled(fetchIsos.map(iso => iso === todayIso && onSite
+      const results = await Promise.allSettled(need.map(iso => iso === todayIso && onSite
         ? countHit("menu-" + iso).catch(() => countGet("menu-" + iso))
         : countGet("menu-" + iso)));
-      // 받아 온 날짜만 새 숫자로 바꾸고, 못 받은 날짜는 같은 날 받아 둔 숫자를 쓴다.
-      const merged = { ...cache };
       results.forEach((r, i) => {
-        if (r.status === "fulfilled") { merged[fetchIsos[i]] = r.value; viewsByDay[fetchIsos[i]] = r.value; }
+        if (r.status !== "fulfilled") return;
+        counts[need[i]] = r.value;
+        if (need[i] < todayIso) final[need[i]] = r.value;
       });
-      if (todayIso in merged) {
-        paint(merged);
-        try { localStorage.setItem("views-cache", JSON.stringify({ date: todayIso, counts: merged })); } catch (err) {}
-      } else if (!cached) {
+      // 2주 넘게 지난 날짜는 지운다.
+      const cutoff = isoOf(new Date(loadedAt.getFullYear(), loadedAt.getMonth(), loadedAt.getDate() - 14));
+      Object.keys(final).forEach(iso => { if (iso < cutoff) delete final[iso]; });
+      viewsSave("views-final", final);
+      if (todayIso in counts) {
+        viewsSave("views-today", { date: todayIso, n: counts[todayIso] });
+        paint();
+      } else if (!shown) {
         viewsEl.hidden = true;
       }
     }
 
     function loadViews() {
-      const weekIsos = DATA.days.filter((d, i) => !(i === 0 && new Date(d.date + "T00:00:00").getDay() === 0)).map(d => d.date);
-      return showViews(DATA.days.map(d => d.date), weekIsos);
+      // 앞에 붙은 지난 일요일은 이번 주 합계에서 뺀다.
+      return showViews(DATA.days.filter((d, i) => !(i === 0 && new Date(d.date + "T00:00:00").getDay() === 0)).map(d => d.date));
     }
 
 // 만세력 계산 — 외부 데이터 없이 천문 계산으로 절기·합삭·음력·사주를 구한다 (한국 표준시 기준).
@@ -1247,7 +1265,7 @@ if (typeof module !== "undefined") module.exports = SAJU;
     function bwViews(B) {
       const isos = [];
       for (let d = new Date(B.from + "T00:00:00"); isoOf(d) <= todayIso; d.setDate(d.getDate() + 1)) isos.push(isoOf(d));
-      return showViews(isos, isos);
+      return showViews(isos);
     }
 
     function bwLuck($) {
