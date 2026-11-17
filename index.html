@@ -103,10 +103,8 @@
     .dates button.is-today:not([aria-selected="true"]) {
       border-color: var(--accent); color: var(--accent);
     }
-    .views {
-      margin-top: 12px; font-size: 12px; color: var(--muted);
-      display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: baseline;
-    }
+    .views { margin-top: 12px; font-size: 12px; color: var(--muted); }
+    .views[hidden] { display: none; }
     .views strong { color: var(--ink); font-weight: 700; }
     .loc-nav { display: flex; gap: 8px; flex-wrap: wrap; margin: 16px 0 8px; }
     .loc-nav a {
@@ -976,8 +974,18 @@
     }
 
     // ---- 조회수 ----
+    // 집계 서버가 응답하지 않으면 6초 뒤 포기한다 (그 뒤엔 조회수 줄을 숨김).
+    function countFetch(url) {
+      const ctrl = new AbortController();
+      let timer;
+      const timeout = new Promise((_, reject) => {
+        timer = setTimeout(() => { ctrl.abort(); reject(new Error("count timeout")); }, 6000);
+      });
+      return Promise.race([fetch(url, { signal: ctrl.signal }), timeout]).finally(() => clearTimeout(timer));
+    }
+
     async function countGet(key) {
-      const res = await fetch(COUNT_BASE + "/get/" + COUNT_NS + "/" + encodeURIComponent(key));
+      const res = await countFetch(COUNT_BASE + "/get/" + COUNT_NS + "/" + encodeURIComponent(key));
       if (res.status === 404) return 0;
       if (!res.ok) throw new Error("count get");
       const data = await res.json();
@@ -985,7 +993,7 @@
     }
 
     async function countHit(key) {
-      const res = await fetch(COUNT_BASE + "/hit/" + COUNT_NS + "/" + encodeURIComponent(key));
+      const res = await countFetch(COUNT_BASE + "/hit/" + COUNT_NS + "/" + encodeURIComponent(key));
       if (!res.ok) throw new Error("count hit");
       const data = await res.json();
       return Number(data.value) || 0;
