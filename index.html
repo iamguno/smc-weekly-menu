@@ -974,12 +974,12 @@
     }
 
     // ---- 조회수 ----
-    // 집계 서버가 응답하지 않으면 6초 뒤 포기한다 (그 뒤엔 조회수 줄을 숨김).
+    // 집계 서버가 응답하지 않으면 30초 뒤 포기한다 (그 뒤엔 조회수 줄을 숨김).
     function countFetch(url) {
       const ctrl = new AbortController();
       let timer;
       const timeout = new Promise((_, reject) => {
-        timer = setTimeout(() => { ctrl.abort(); reject(new Error("count timeout")); }, 6000);
+        timer = setTimeout(() => { ctrl.abort(); reject(new Error("count timeout")); }, 30000);
       });
       return Promise.race([fetch(url, { signal: ctrl.signal }), timeout]).finally(() => clearTimeout(timer));
     }
@@ -999,22 +999,39 @@
       return Number(data.value) || 0;
     }
 
-    async function loadViews() {
+    // 조회수: 이 휴대폰에서 같은 날 마지막으로 받은 숫자를 먼저 보여 주고, 서버가 답하면 새 숫자로 바꾼다.
+    // (집계 서버가 느릴 때도 다시 들어온 사람에게는 바로 숫자가 보이게)
+    async function showViews(fetchIsos, weekIsos) {
       const onSite = location.hostname === "iamguno.github.io";
+      let cache = {};
+      try {
+        const saved = JSON.parse(localStorage.getItem("views-cache"));
+        if (saved && saved.date === todayIso) cache = saved.counts || {};
+      } catch (err) {}
+      const paint = c => {
+        const week = weekIsos.reduce((sum, iso) => sum + (c[iso] || 0), 0);
+        viewsEl.hidden = false;
+        viewsEl.innerHTML = "조회수 · 오늘 <strong>" + (c[todayIso] || 0) + "</strong>회 · 이번 주 <strong>" + week + "</strong>회";
+      };
+      const cached = todayIso in cache && weekIsos.every(iso => iso in cache);
+      if (cached) paint(cache);
       try {
         // 날짜별 요청을 한꺼번에 보내서 가장 느린 하나만큼만 기다린다.
-        const counts = await Promise.all(DATA.days.map(d => d.date === todayIso && onSite
-          ? countHit("menu-" + d.date)
-          : countGet("menu-" + d.date)));
-        DATA.days.forEach((d, i) => { viewsByDay[d.date] = counts[i]; });
-        const todayCount = viewsByDay[todayIso] || 0;
-        const weekDays = DATA.days.filter((d, i) => !(i === 0 && new Date(d.date + "T00:00:00").getDay() === 0));
-        const weekCount = weekDays.reduce((s, day) => s + (viewsByDay[day.date] || 0), 0);
-        viewsEl.hidden = false;
-        viewsEl.innerHTML = "조회수 · 오늘 <strong>" + todayCount + "</strong>회 · 이번 주 <strong>" + weekCount + "</strong>회";
+        const counts = await Promise.all(fetchIsos.map(iso => iso === todayIso && onSite
+          ? countHit("menu-" + iso)
+          : countGet("menu-" + iso)));
+        const fresh = {};
+        fetchIsos.forEach((iso, i) => { fresh[iso] = counts[i]; viewsByDay[iso] = counts[i]; });
+        paint(fresh);
+        try { localStorage.setItem("views-cache", JSON.stringify({ date: todayIso, counts: fresh })); } catch (err) {}
       } catch (err) {
-        viewsEl.hidden = true;
+        if (!cached) viewsEl.hidden = true;
       }
+    }
+
+    function loadViews() {
+      const weekIsos = DATA.days.filter((d, i) => !(i === 0 && new Date(d.date + "T00:00:00").getDay() === 0)).map(d => d.date);
+      return showViews(DATA.days.map(d => d.date), weekIsos);
     }
 
 // 만세력 계산 — 외부 데이터 없이 천문 계산으로 절기·합삭·음력·사주를 구한다 (한국 표준시 기준).
@@ -1215,19 +1232,10 @@ if (typeof module !== "undefined") module.exports = SAJU;
       $("bw-hours-list").innerHTML = rows.join("");
     }
 
-    async function bwViews(B) {
-      const onSite = location.hostname === "iamguno.github.io";
-      try {
-        const isos = [];
-        for (let d = new Date(B.from + "T00:00:00"); isoOf(d) <= todayIso; d.setDate(d.getDate() + 1)) isos.push(isoOf(d));
-        const counts = await Promise.all(isos.map(iso =>
-          iso === todayIso && onSite ? countHit("menu-" + iso) : countGet("menu-" + iso)));
-        const week = counts.reduce((x, y) => x + y, 0), today = counts[isos.indexOf(todayIso)] || 0;
-        viewsEl.hidden = false;
-        viewsEl.innerHTML = "조회수 · 오늘 <strong>" + today + "</strong>회 · 이번 주 <strong>" + week + "</strong>회";
-      } catch (err) {
-        viewsEl.hidden = true;
-      }
+    function bwViews(B) {
+      const isos = [];
+      for (let d = new Date(B.from + "T00:00:00"); isoOf(d) <= todayIso; d.setDate(d.getDate() + 1)) isos.push(isoOf(d));
+      return showViews(isos, isos);
     }
 
     function bwLuck($) {
@@ -1484,8 +1492,8 @@ if (typeof module !== "undefined") module.exports = SAJU;
           const toHit = fresh && onSite ? [countKey(q, side), prev ? countKey(q, prev) + "-x" : null] : [];
           const work = Promise.all(keys.map(k => toHit.includes(k) ? countHit(k) : countGet(k)))
             .then(([a, ax, b, bx]) => [Math.max(0, a - ax), Math.max(0, b - bx)]);
-          // 집계 서버가 늦으면 8초 뒤 포기하고 안내한다.
-          const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 8000));
+          // 집계 서버가 늦으면 30초 뒤 포기하고 안내한다.
+          const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 30000));
           counts = await Promise.race([timeout, work]);
           // 사이트 밖(미리보기)에서는 집계를 늘리지 않으니 내 표만 더해서 보여 준다.
           if (!onSite) counts[mineIdx] += 1;
