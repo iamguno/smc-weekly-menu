@@ -1025,10 +1025,12 @@
         if (iso > todayIso) counts[iso] = 0;
         else if (iso < todayIso && iso in final) counts[iso] = final[iso];
       });
-      const paint = () => {
+      // withWeek 가 false 면 이번 주 합계는 아직 다 모이지 않은 것이라 오늘 숫자만 보여 준다.
+      const paint = (withWeek = true) => {
         const week = weekIsos.reduce((sum, iso) => sum + (counts[iso] || 0), 0);
         viewsEl.hidden = false;
-        viewsEl.innerHTML = "조회수 · 오늘 <strong>" + (counts[todayIso] || 0) + "</strong>회 · 이번 주 <strong>" + week + "</strong>회";
+        viewsEl.innerHTML = "조회수 · 오늘 <strong>" + (counts[todayIso] || 0) + "</strong>회"
+          + (withWeek ? " · 이번 주 <strong>" + week + "</strong>회" : "");
       };
       const need = weekIsos.filter(iso => iso === todayIso || (iso < todayIso && !(iso in final)));
       if (!need.includes(todayIso)) need.push(todayIso);
@@ -1039,21 +1041,22 @@
         shown = true;
       }
       // 오늘 조회수 올리기가 끝내 실패하면 오늘 숫자만 읽어 온다.
-      const results = await Promise.allSettled(need.map(iso => iso === todayIso && onSite
+      // 숫자가 오는 대로 바로 반영해서, 오늘 숫자만 오면 먼저 보여 준다.
+      await Promise.allSettled(need.map(iso => (iso === todayIso && onSite
         ? countHit("menu-" + iso).catch(() => countGet("menu-" + iso))
-        : countGet("menu-" + iso)));
-      results.forEach((r, i) => {
-        if (r.status !== "fulfilled") return;
-        counts[need[i]] = r.value;
-        if (need[i] < todayIso) final[need[i]] = r.value;
-      });
+        : countGet("menu-" + iso)).then(n => {
+          counts[iso] = n;
+          if (iso < todayIso) final[iso] = n;
+          if (todayIso in counts && !shown) paint(false);
+        })));
       // 2주 넘게 지난 날짜는 지운다.
       const cutoff = isoOf(new Date(loadedAt.getFullYear(), loadedAt.getMonth(), loadedAt.getDate() - 14));
       Object.keys(final).forEach(iso => { if (iso < cutoff) delete final[iso]; });
       viewsSave("views-final", final);
       if (todayIso in counts) {
         viewsSave("views-today", { date: todayIso, n: counts[todayIso] });
-        paint();
+        // 지난 날짜 중 끝내 못 받은 날이 있으면 틀린 합계 대신 오늘 숫자만 보여 준다.
+        paint(weekIsos.every(iso => iso in counts));
       } else if (!shown) {
         viewsEl.hidden = true;
       }
