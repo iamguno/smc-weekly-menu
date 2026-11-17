@@ -422,7 +422,7 @@
     const datesEl = document.getElementById("dates");
     const viewsEl = document.getElementById("views");
     const COUNT_NS = "iamguno.github.io";
-    const COUNT_BASE = "https://abacus.jsn.cam";
+    const COUNT_BASE = "https://smc-counter.iamguno.workers.dev"; // smc-meal/counter (Cloudflare Worker + D1)
     let selected = DATA.days.some(d => d.date === todayIso) ? todayIso : DATA.days[0].date;
 
     function dayOf(iso) {
@@ -973,13 +973,12 @@
     }
 
     // ---- 조회수 ----
-    // 집계 서버(abacus)가 느리거나 오류를 섞어 낼 때가 있어 한 번 시도에 40초까지 기다리고,
-    // 실패하면 한 번 더 시도한다.
+    // 집계 서버가 응답하지 않으면 한 번 시도에 10초까지 기다리고, 실패하면 한 번 더 시도한다.
     function countFetch(url) {
       const ctrl = new AbortController();
       let timer;
       const timeout = new Promise((_, reject) => {
-        timer = setTimeout(() => { ctrl.abort(); reject(new Error("count timeout")); }, 40000);
+        timer = setTimeout(() => { ctrl.abort(); reject(new Error("count timeout")); }, 10000);
       });
       return Promise.race([fetch(url, { signal: ctrl.signal }), timeout]).finally(() => clearTimeout(timer));
     }
@@ -1006,7 +1005,7 @@
       return Number(data.value) || 0;
     }
 
-    // 조회수 — 집계 서버가 요청이 몰리면 크게 느려지므로 요청 수를 최소로 줄인다.
+    // 조회수 — 요청 수를 최소로 줄인다.
     //  - 아직 오지 않은 날은 0이므로 묻지 않는다.
     //  - 지난 날의 숫자는 더 바뀌지 않으므로 한 번 받으면 이 휴대폰에 저장해 두고 다시 묻지 않는다.
     //  - 같은 날 받아 둔 오늘 숫자를 먼저 보여 주고, 서버가 답하면 새 숫자로 바꾼다.
@@ -1525,8 +1524,8 @@ if (typeof module !== "undefined") module.exports = SAJU;
           const toHit = fresh && onSite ? [countKey(q, side), prev ? countKey(q, prev) + "-x" : null] : [];
           const work = Promise.all(keys.map(k => toHit.includes(k) ? countHit(k) : countGet(k)))
             .then(([a, ax, b, bx]) => [Math.max(0, a - ax), Math.max(0, b - bx)]);
-          // 집계 서버가 늦으면 60초 뒤 포기하고 안내한다 (요청마다 한 번씩 다시 시도하므로).
-          const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 60000));
+          // 집계 서버가 늦으면 25초 뒤 포기하고 안내한다 (요청마다 한 번씩 다시 시도하므로).
+          const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 25000));
           counts = await Promise.race([timeout, work]);
           // 사이트 밖(미리보기)에서는 집계를 늘리지 않으니 내 표만 더해서 보여 준다.
           if (!onSite) counts[mineIdx] += 1;
