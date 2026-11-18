@@ -171,6 +171,9 @@
       line-height: 1.5; background: var(--event-bg); border: 2px solid var(--event); color: var(--ink); }
     .notice strong { display: inline-block; color: var(--event); font-weight: 800; margin-right: 8px; }
     @media (max-width: 600px) { .notice { font-size: 15px; padding: 11px 12px; } }
+    .notice.compact { font-size: 13px; padding: 6px 10px; margin-top: 8px; white-space: nowrap; overflow: hidden;
+      text-overflow: ellipsis; cursor: pointer; }
+    .notice.compact strong { margin-right: 6px; }
     .cafe-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; }
     .cafe-head {
       margin: 0; font-size: 13px; color: var(--accent);
@@ -389,6 +392,21 @@
       const lastIso = DATA.days[DATA.days.length - 1].date;
       noticeEl.querySelector("span").textContent = todayIso > lastIso ? DATA.notice.behind : DATA.notice.ahead;
       noticeEl.hidden = false;
+      // 처음엔 크게 보이고, 직접 아래로 스크롤하면 한 줄로 접힌다. 맨 위로 오거나 누르면 다시 펼쳐진다.
+      // (처음 열 때 지금 식사 위치로 자동 스크롤하는 것에는 접히지 않도록, 사용자가 직접 움직였을 때만)
+      let userMoved = false;
+      ["wheel", "touchmove", "keydown"].forEach(type =>
+        window.addEventListener(type, () => { userMoved = true; }, { passive: true }));
+      window.addEventListener("scroll", () => {
+        if (!userMoved) return;
+        if (window.scrollY > 60) noticeEl.classList.add("compact");
+        else if (window.scrollY < 10) noticeEl.classList.remove("compact");
+      }, { passive: true });
+      noticeEl.addEventListener("click", () => {
+        noticeEl.classList.remove("compact");
+        // 펼치면 상단이 커지며 브라우저가 스크롤 위치를 맞추는데, 그걸로 바로 다시 접히지 않게 한다.
+        userMoved = false;
+      });
     }
 
     const datesEl = document.getElementById("dates");
