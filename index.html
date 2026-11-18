@@ -206,14 +206,14 @@
       .dates, .loc-nav, .views, .head-actions, .share-btn, .live { display: none; }
       section.place { break-inside: avoid; }
     }
-    /* ===== 쉬어 가는 주 — 오늘의 운세 · 밸런스 게임 · 운영 시간 ===== */
+    /* ===== 쉬어 가는 주 — 오늘의 운세 · 운영 시간 ===== */
     :root {
-      --gold: #b7860b; --a: #2f6fe4; --a-bg: #e3edff; --b: #e0573b; --b-bg: #ffe8e2;
+      --gold: #b7860b;
       --e0: #2f9a4f; --e1: #d9483e; --e2: #c08a0e; --e3: #7d8692; --e4: #2f5f9e;
       --e0b: #e4f4e8; --e1b: #fde7e5; --e2b: #fbf1d6; --e3b: #eef0f3; --e4b: #e3ebf7;
     }
     :root[data-theme="dark"] {
-      --gold: #f0c75e; --a: #8cb8f5; --a-bg: #182640; --b: #ff9a83; --b-bg: #3a1f1a;
+      --gold: #f0c75e;
       --e0: #7fd39a; --e1: #ff8a80; --e2: #f0c75e; --e3: #c3c9d1; --e4: #8fb3ea;
       --e0b: #16281c; --e1b: #2e1a18; --e2b: #2a2412; --e3b: #222428; --e4b: #17223a;
     }
@@ -290,30 +290,6 @@
     .rel b { color: var(--accent); font-weight: 600; }
     .note { font-size: 11.5px; color: var(--muted); margin-top: 10px; }
 
-    /* ---- 밸런스 게임 ---- */
-    .bal-step { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
-    .vs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; position: relative; }
-    .vs::after { content: "VS"; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
-      width: 34px; height: 34px; border-radius: 50%; background: var(--ink); color: var(--bg);
-      font: 800 12px/34px sans-serif; text-align: center; pointer-events: none; }
-    .vs.done::after { display: none; }
-    .pick { appearance: none; border: 2px solid transparent; border-radius: 16px; min-height: 120px; padding: 14px 10px;
-      font: inherit; font-size: 15px; font-weight: 700; cursor: pointer; position: relative; overflow: hidden;
-      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; text-align: center; }
-    .pick .em { font-size: 28px; }
-    .pick.a { background: var(--a-bg); color: var(--a); }
-    .pick.b { background: var(--b-bg); color: var(--b); }
-    .pick .fill { position: absolute; left: 0; bottom: 0; width: 100%; height: 0; opacity: .18; transition: height .6s ease-out; }
-    .pick.a .fill { background: var(--a); } .pick.b .fill { background: var(--b); }
-    .pick .pct { font-size: 24px; font-weight: 800; position: relative; }
-    .pick .cnt { font-size: 11.5px; font-weight: 500; opacity: .8; position: relative; }
-    .pick.picked { border-color: currentColor; }
-    .pick.picked::before { content: "내 선택"; position: absolute; top: 8px; left: 8px; font-size: 10px; font-weight: 700;
-      color: var(--card); border-radius: 999px; padding: 2px 6px; }
-    .pick.a.picked::before { background: var(--a); } .pick.b.picked::before { background: var(--b); }
-    .vs.done .pick.picked { cursor: default; }
-    .bal-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; font-size: 12px; color: var(--muted); }
-
     /* ---- 운영 시간 ---- */
     #bw-hours-list { margin-top: 6px; }
     .hrow { display: flex; flex-wrap: wrap; gap: 2px 12px; padding: 9px 0; border-top: 1px solid var(--line); font-size: 13px; }
@@ -367,12 +343,6 @@
         <div class="privacy">🔒 입력한 정보는 이 휴대폰에만 저장되고 어디에도 보내지 않아요.</div>
       </div>
       <div id="bw-result"></div>
-    </section>
-
-    <section class="place" id="bw-balance">
-      <div class="slot-head"><h2>⚖️ 밸런스 게임</h2><button class="pill-btn share-btn" type="button" id="bw-bal-share">공유</button></div>
-      <div class="desc">하루에 한 질문! 둘 중 하나만 고를 수 있다면?</div>
-      <div id="bw-bal"></div>
     </section>
 
     <section class="place" id="bw-hours">
@@ -1216,7 +1186,7 @@ const SAJU = (() => {
 if (typeof module !== "undefined") module.exports = SAJU;
 
     // ===== 쉬어 가는 주 (쉬어가는주/script.js) =====
-    // 식단을 못 올린 주에 식단 대신 오늘의 운세 · 밸런스 게임 · 운영 시간을 보여 준다.
+    // 식단을 못 올린 주에 식단 대신 오늘의 운세 · 운영 시간을 보여 준다.
     const bwStore = {
       get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (err) { return null; } },
       set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (err) {} },
@@ -1239,7 +1209,7 @@ if (typeof module !== "undefined") module.exports = SAJU;
       main.appendChild($("break-tpl").content.cloneNode(true));
       const nav = $("locnav");
       nav.innerHTML = "";
-      [["bw-luck", "🔮 오늘의 운세"], ["bw-balance", "⚖️ 밸런스 게임"], ["bw-hours", "🕒 운영 시간"]].forEach(([id, label]) => {
+      [["bw-luck", "🔮 오늘의 운세"], ["bw-hours", "🕒 운영 시간"]].forEach(([id, label]) => {
         const a = document.createElement("a");
         a.href = "#" + id;
         a.textContent = label;
@@ -1252,7 +1222,6 @@ if (typeof module !== "undefined") module.exports = SAJU;
       });
       bwHours($);
       bwLuck($);
-      bwBalance($, B);
       bwViews(B);
     }
 
@@ -1473,88 +1442,6 @@ if (typeof module !== "undefined") module.exports = SAJU;
         $("bw-cal").value = saved.cal; $("bw-hour").value = saved.hour; $("bw-sex").value = saved.sex;
         go(saved, false);
       }
-    }
-
-    function bwBalance($, B) {
-      // 하루에 한 질문 — BREAK_WEEK 첫날부터 순서대로
-      const BAL = [
-        [["🌅", "평생 아침형 인간"], ["🌙", "평생 저녁형 인간"]],
-        [["🌴", "월급 그대로 주 4일 근무"], ["💰", "월급 1.5배 주 5일 근무"]],
-        [["🛗", "엘리베이터가 늘 바로 온다"], ["🚦", "신호등이 늘 초록불이다"]],
-        [["🍜", "평생 짜장면만"], ["🌶️", "평생 짬뽕만"]],
-        [["🏥", "점심은 평생 본관 직원식당"], ["🎗️", "점심은 평생 암병원 직원식당"]],
-        [["🥢", "탕수육은 부먹"], ["🥄", "탕수육은 찍먹"]],
-        [["❄️", "한여름에 히터 없는 방"], ["🔥", "한겨울에 에어컨만 있는 방"]],
-      ];
-      const box = $("bw-bal"), onSite = location.hostname === "iamguno.github.io";
-      const voteKey = i => "bw-bal-" + B.from + "-" + i;
-      const countKey = (i, side) => "bal-" + B.from + "-" + i + "-" + side;
-      const dayIdx = Math.round((new Date(todayIso + "T00:00:00") - new Date(B.from + "T00:00:00")) / 864e5);
-      const bi = Math.max(0, dayIdx) % BAL.length;
-      // 집계: 선택지마다 고른 수(...-a)와 바꿔 나간 수(...-a-x)를 따로 올리고, 둘의 차를 보여 준다.
-      // 집계 서버는 숫자를 올리기만 하므로 이렇게 해야 선택을 바꿔도 한 사람이 한 번만 세어진다.
-      let lastShare = "", busy = false;
-
-      function render(fresh, prev) {
-        const mine = bwStore.get(voteKey(bi));
-        box.innerHTML = `<div class="bal-step">오늘의 질문 · ${bi + 1}일째</div><div class="vs">` +
-          ["a", "b"].map((side, j) => `<button type="button" class="pick ${side}" data-side="${side}"><span class="fill"></span><span class="em">${BAL[bi][j][0]}</span><span>${BAL[bi][j][1]}</span></button>`).join("") +
-          `</div><div class="bal-foot"><span id="bw-bal-total"></span></div>`;
-        box.querySelectorAll(".pick").forEach(b => b.addEventListener("click", () => {
-          const before = bwStore.get(voteKey(bi)), side = b.dataset.side;
-          if (busy || before === side) return;
-          bwStore.set(voteKey(bi), side);
-          render(true, before);
-        }));
-        lastShare = "";
-        if (mine) show(mine, !!fresh, prev);
-      }
-      async function show(side, fresh, prev) {
-        const q = bi, mineIdx = side === "a" ? 0 : 1;
-        busy = true;
-        box.querySelector(".vs").classList.add("done");
-        const total = $("bw-bal-total");
-        total.textContent = "집계 중…";
-        const btns = box.querySelectorAll(".pick");
-        btns.forEach((x, j) => x.classList.toggle("picked", j === mineIdx));
-        let counts = null;
-        try {
-          // 네 숫자(a, a-x, b, b-x)를 한꺼번에 요청한다. 새로 고른 쪽과 바꿔 나간 쪽은 올리면서 읽는다.
-          const keys = [countKey(q, "a"), countKey(q, "a") + "-x", countKey(q, "b"), countKey(q, "b") + "-x"];
-          const toHit = fresh && onSite ? [countKey(q, side), prev ? countKey(q, prev) + "-x" : null] : [];
-          const work = Promise.all(keys.map(k => toHit.includes(k) ? countHit(k) : countGet(k)))
-            .then(([a, ax, b, bx]) => [Math.max(0, a - ax), Math.max(0, b - bx)]);
-          // 집계 서버가 늦으면 25초 뒤 포기하고 안내한다 (요청마다 한 번씩 다시 시도하므로).
-          const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 25000));
-          counts = await Promise.race([timeout, work]);
-          // 사이트 밖(미리보기)에서는 집계를 늘리지 않으니 내 표만 더해서 보여 준다.
-          if (!onSite) counts[mineIdx] += 1;
-          counts[mineIdx] = Math.max(counts[mineIdx], 1);
-        } catch (err) {
-          counts = null;
-        }
-        busy = false;
-        if (q !== bi || bwStore.get(voteKey(q)) !== side) return;
-        const pickText = BAL[q][mineIdx][1];
-        if (!counts) {
-          total.textContent = "집계를 불러오지 못했어요.";
-          lastShare = `⚖️ 밸런스 게임\n${BAL[q][0][1]} vs ${BAL[q][1][1]}\n나는 「${pickText}」!`;
-          return;
-        }
-        const tot = counts[0] + counts[1];
-        btns.forEach((x, j) => {
-          const pct = Math.round(counts[j] / tot * 100);
-          x.insertAdjacentHTML("beforeend", `<span class="pct">${pct}%</span><span class="cnt">${counts[j].toLocaleString()}명</span>`);
-          requestAnimationFrame(() => requestAnimationFrame(() => { x.querySelector(".fill").style.height = pct + "%"; }));
-        });
-        total.innerHTML = `지금까지 <b>${tot.toLocaleString()}</b>명 참여`;
-        lastShare = `⚖️ 밸런스 게임\n${BAL[q][0][1]} vs ${BAL[q][1][1]}\n나는 「${pickText}」 — ${Math.round(counts[mineIdx] / tot * 100)}%가 같은 선택`;
-      }
-      $("bw-bal-share").addEventListener("click", () => {
-        if (!lastShare) { toast("먼저 하나를 골라 보세요."); return; }
-        bwShare(lastShare);
-      });
-      render();
     }
 
     // 식단을 못 올린 주에는 식단 대신 쉬어 가는 코너를 보여 준다.
